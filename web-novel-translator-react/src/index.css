@@ -1,0 +1,154 @@
+/* Basic Styles */
+body {
+    font-family: 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background: linear-gradient(to right, #ece9e6, #ffffff);
+    margin: 0;
+    padding: 20px;
+    box-sizing: border-box;
+    color: #333;
+}
+
+#root {
+    width: 100%;
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+.container {
+    background-color: #ffffff;
+    padding: 30px 40px;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    box-sizing: border-box;
+}
+
+h1 {
+    text-align: center;
+    color: #2c3e50;
+    margin-bottom: 30px;
+    font-size: 2.2em;
+    font-weight: 700;
+}
+
+/* Input Group Styles */
+.input-group {
+    margin-bottom: 20px;
+}
+
+.input-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: #34495e;
+    font-weight: 600;
+    font-size: 1.05em;
+}
+
+.input-group input[type="password"],
+.input-group input[type="url"],
+.input-group input[type="number"],
+.input-group input[type="text"],
+.input-group select {
+    width: 100%;
+    padding: 12px 15px;
+    border: 1px solid #c0d9e6;
+    border-radius: 8px;
+    box-sizing: border-box;
+    font-size: 1em;
+    color: #333;
+    background-color: #f8faff;
+    transition: all 0.3s ease;
+}
+
+.input-group input:focus,
+.input-group select:focus {
+    border-color: #007bff;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.2);
+    background-color: #ffffff;
+}
+
+/* Button Group Styles */
+.button-group {
+    display: flex;
+    flex-direction: column; /* Stack buttons on mobile */
+    gap: 15px; /* Space between buttons */
+    margin-top: 30px;
+}
+
+.button-group button {
+    background-color: #007bff;
+    color: white;
+    padding: 14px 28px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.1em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    width: 100%; /* Full width on mobile */
+}
+
+.button-group button:hover:not(:disabled) {
+    background-color: #0056b3;
+    transform: translateY(-2px);
+}
+
+.button-group button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+    opacity: 0.8;
+}
+
+/* Status and Progress Bar Styles */
+.status {
+    margin-top: 25px;
+    padding: 12px 15px;
+    border-radius: 8px;
+    background-color: #e6f7ff; /* Light blue */
+    color: #0056b3; /* Darker blue */
+    text-align: center;
+    font-size: 1em;
+    border: 1px solid #b3e0ff;
+    transition: opacity 0.3s ease;
+    min-height: 40px; /* Ensure consistent height */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.progress-bar-container {
+    width: 100%;
+    background-color: #e0e0e0;
+    border-radius: 5px;
+    margin-top: 15px;
+    overflow: hidden; /* Ensures the inner bar respects border-radius */
+}
+
+.progress-bar {
+    height: 25px;
+    background-color: #28a745; /* Green */
+    border-radius: 5px;
+    text-align: center;
+    color: white;
+    line-height: 25px;
+    font-size: 0.9em;
+    transition: width 0.5s ease-in-out;
+}
+
+/* Responsive Adjustments */
+@media (min-width: 768px) {
+    .button-group {
+        flex-direction: row; /* Buttons side-by-side on larger screens */
+        justify-content: space-between;
+    }
+
+    .button-group button {
+        width: auto; /* Auto width on larger screens */
+        min-width: 200px; /* Minimum width for better appearance */
+    }
+}
