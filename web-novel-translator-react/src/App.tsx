@@ -61,10 +61,20 @@ function App() {
                 setTranslationProgress(Math.round(((i + 1) / numChapters) * 100));
                 // Preview text now handled by chapter selector
             } catch (error: any) {
-                setStatus(`Error translating chapter ${chapterNumber}: ${error.message}`);
+                // Save whatever chapters we managed to translate so far
+                setTranslatedChapters(newTranslatedChapters);
+                
+                const translatedCount = newTranslatedChapters.length;
+                if (translatedCount > 0) {
+                    setStatus(`Translation stopped at chapter ${chapterNumber}. Successfully translated ${translatedCount} chapter${translatedCount > 1 ? 's' : ''} (chapters ${newTranslatedChapters.map(ch => ch.chapterNumber).join(', ')}). Error: ${error.message}`);
+                } else {
+                    setStatus(`Translation failed on first chapter ${chapterNumber}: ${error.message}`);
+                }
+                
                 console.error(`Error translating chapter ${chapterNumber}:`, error);
                 setIsTranslating(false);
-                setTranslationProgress(0);
+                // Keep the progress at current level instead of resetting to 0
+                setTranslationProgress(Math.round((translatedCount / numChapters) * 100));
                 return;
             }
             // Add a delay between API calls to avoid hitting rate limits
@@ -208,9 +218,17 @@ Now, please process the following URL:`;
             try {
                 // Each attempt creates a completely independent AI instance
                 return await translateSingleChapter(apiKey, chapterUrl, selectedModel);
-            } catch (error) {
+            } catch (error: any) {
                 console.error(`🔄 Attempt ${retries + 1} failed for ${chapterUrl}:`, error);
                 retries++;
+                
+                // Check if it's a specific error that we shouldn't retry
+                const errorMessage = error.message || error.toString();
+                if (errorMessage.includes('403') || errorMessage.includes('blocked') || errorMessage.includes('access denied')) {
+                    console.warn(`🚫 Access denied or blocked for ${chapterUrl}, not retrying`);
+                    throw new Error(`Access denied or blocked for chapter. This might be due to rate limiting or the content being restricted. Original error: ${errorMessage}`);
+                }
+                
                 if (retries < maxRetries) {
                     console.log(`⏳ Waiting 1 second before creating fresh instance for retry ${retries + 1}...`);
                     await new Promise(resolve => setTimeout(resolve, 1000));
