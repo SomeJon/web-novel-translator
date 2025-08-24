@@ -141,14 +141,14 @@ Your final output must be completely clean prose. It is absolutely forbidden to 
 **REMEMBER: Start your response immediately with the chapter title. No explanations, no process descriptions, no thinking out loud.**
 
 **OUTPUT FORMAT MARKERS:**
-You MUST start your response with exactly "<start>" followed by a newline, then provide your translation, and end with a newline followed by exactly "<end>".
+You MUST start your response with exactly "{{start}}" followed by a newline, then provide your translation, and end with a newline followed by exactly "{{end}}".
 
 Example:
-<start>
+{{start}}
 Chapter Title [chapter: X]
 [translated content here]
 [source URL]
-<end>
+{{end}}
 
 Now, please process the following URL:`;
 
@@ -182,9 +182,9 @@ Now, please process the following URL:`;
 
             console.log(`✅ Translation completed for ${chapterUrl}. Length: ${fullText.length}`);
             
-            // Extract text between <start> and <end> markers
-            const startMarker = '<start>';
-            const endMarker = '<end>';
+            // Extract text between {{start}} and {{end}} markers
+            const startMarker = '{{start}}';
+            const endMarker = '{{end}}';
             
             const startIndex = fullText.indexOf(startMarker);
             const endIndex = fullText.lastIndexOf(endMarker);
@@ -227,6 +227,12 @@ Now, please process the following URL:`;
                 if (errorMessage.includes('403') || errorMessage.includes('blocked') || errorMessage.includes('access denied')) {
                     console.warn(`🚫 Access denied or blocked for ${chapterUrl}, not retrying`);
                     throw new Error(`Access denied or blocked for chapter. This might be due to rate limiting or the content being restricted. Original error: ${errorMessage}`);
+                }
+                
+                // Check for character encoding issues (like HTML markers in headers)
+                if (errorMessage.includes('ByteString') || errorMessage.includes('character at index') || errorMessage.includes('greater than 255')) {
+                    console.warn(`🔤 Character encoding error for ${chapterUrl}, not retrying`);
+                    throw new Error(`Character encoding error. This might be caused by special characters in the request. Original error: ${errorMessage}`);
                 }
                 
                 if (retries < maxRetries) {
