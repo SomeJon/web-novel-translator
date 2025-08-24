@@ -1,21 +1,54 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import './index.css';
 import {
     GoogleGenAI,
   } from '@google/genai';
 
 
+// Local storage keys
+const STORAGE_KEYS = {
+    GEMINI_API_KEY: 'wnt_gemini_api_key',
+    SELECTED_MODEL: 'wnt_selected_model',
+    SITE: 'wnt_site',
+    SERIES_URL: 'wnt_series_url',
+    SERIES_NAME: 'wnt_series_name',
+    START_CHAPTER: 'wnt_start_chapter',
+    NUM_CHAPTERS: 'wnt_num_chapters',
+    OUTPUT_FILE_NAME: 'wnt_output_file_name',
+    TRANSLATED_CHAPTERS: 'wnt_translated_chapters'
+};
+
+// Local storage utility functions
+const loadFromStorage = (key: string, defaultValue: any) => {
+    try {
+        const item = localStorage.getItem(key);
+        return item ? JSON.parse(item) : defaultValue;
+    } catch (error) {
+        console.warn(`Error loading ${key} from localStorage:`, error);
+        return defaultValue;
+    }
+};
+
+const saveToStorage = (key: string, value: any) => {
+    try {
+        localStorage.setItem(key, JSON.stringify(value));
+    } catch (error) {
+        console.warn(`Error saving ${key} to localStorage:`, error);
+    }
+};
+
 function App() {
-    const [geminiApiKey, setGeminiApiKey] = useState<string>('');
-    const [selectedModel, setSelectedModel] = useState<string>('gemini-2.5-flash');
-    const [site, setSite] = useState<string>('syosetu');
-    const [seriesUrl, setSeriesUrl] = useState<string>('');
-    const [startChapter, setStartChapter] = useState<number>(1);
-    const [numChapters, setNumChapters] = useState<number>(1);
-    const [outputFileName, setOutputFileName] = useState<string>('translated_novel');
+    const [geminiApiKey, setGeminiApiKey] = useState<string>(() => loadFromStorage(STORAGE_KEYS.GEMINI_API_KEY, ''));
+    const [selectedModel, setSelectedModel] = useState<string>(() => loadFromStorage(STORAGE_KEYS.SELECTED_MODEL, 'gemini-2.5-flash'));
+    const [site, setSite] = useState<string>(() => loadFromStorage(STORAGE_KEYS.SITE, 'syosetu'));
+    const [seriesUrl, setSeriesUrl] = useState<string>(() => loadFromStorage(STORAGE_KEYS.SERIES_URL, ''));
+    const [seriesName, setSeriesName] = useState<string>(() => loadFromStorage(STORAGE_KEYS.SERIES_NAME, ''));
+    const [startChapter, setStartChapter] = useState<number>(() => loadFromStorage(STORAGE_KEYS.START_CHAPTER, 1));
+    const [numChapters, setNumChapters] = useState<number>(() => loadFromStorage(STORAGE_KEYS.NUM_CHAPTERS, 1));
+    const [outputFileName, setOutputFileName] = useState<string>(() => loadFromStorage(STORAGE_KEYS.OUTPUT_FILE_NAME, 'translated_novel'));
     const [status, setStatus] = useState<string>('');
     const [isTranslating, setIsTranslating] = useState<boolean>(false);
-    const [translatedChapters, setTranslatedChapters] = useState<Array<{ chapterNumber: number; translatedText: string }>>([]);
+    const [translatedChapters, setTranslatedChapters] = useState<Array<{ chapterNumber: number; translatedText: string }>>(() => loadFromStorage(STORAGE_KEYS.TRANSLATED_CHAPTERS, []));
     const [translationProgress, setTranslationProgress] = useState<number>(0); // 0-100
     // const [previewText, setPreviewText] = useState<string>(''); // Removed - using chapter selector instead
     const [selectedChapter, setSelectedChapter] = useState<number | null>(null); // For chapter selector
@@ -25,6 +58,43 @@ function App() {
     const [fallbackType, setFallbackType] = useState<'japanese' | 'english'>('japanese');
     const [editingChapter, setEditingChapter] = useState<number | null>(null);
     const [editText, setEditText] = useState<string>('');
+
+    // Auto-save form data to localStorage
+    useEffect(() => {
+        saveToStorage(STORAGE_KEYS.GEMINI_API_KEY, geminiApiKey);
+    }, [geminiApiKey]);
+
+    useEffect(() => {
+        saveToStorage(STORAGE_KEYS.SELECTED_MODEL, selectedModel);
+    }, [selectedModel]);
+
+    useEffect(() => {
+        saveToStorage(STORAGE_KEYS.SITE, site);
+    }, [site]);
+
+    useEffect(() => {
+        saveToStorage(STORAGE_KEYS.SERIES_URL, seriesUrl);
+    }, [seriesUrl]);
+
+    useEffect(() => {
+        saveToStorage(STORAGE_KEYS.SERIES_NAME, seriesName);
+    }, [seriesName]);
+
+    useEffect(() => {
+        saveToStorage(STORAGE_KEYS.START_CHAPTER, startChapter);
+    }, [startChapter]);
+
+    useEffect(() => {
+        saveToStorage(STORAGE_KEYS.NUM_CHAPTERS, numChapters);
+    }, [numChapters]);
+
+    useEffect(() => {
+        saveToStorage(STORAGE_KEYS.OUTPUT_FILE_NAME, outputFileName);
+    }, [outputFileName]);
+
+    useEffect(() => {
+        saveToStorage(STORAGE_KEYS.TRANSLATED_CHAPTERS, translatedChapters);
+    }, [translatedChapters]);
 
     const handleTranslate = async () => {
         if (!geminiApiKey) {
@@ -80,16 +150,28 @@ function App() {
                 const translatedCount = newTranslatedChapters.length;
                 console.error(`Error translating chapter ${chapterNumber}:`, error);
                 
-                // Show fallback input for manual text entry
-                setFallbackChapterNumber(chapterNumber);
-                setFallbackText('');
-                setShowFallbackInput(true);
-                setIsTranslating(false);
-                
-                if (translatedCount > 0) {
-                    setStatus(`Translation stopped at chapter ${chapterNumber}. Successfully translated ${translatedCount} chapter${translatedCount > 1 ? 's' : ''} (chapters ${newTranslatedChapters.map(ch => ch.chapterNumber).join(', ')}). You can provide the Japanese text manually below to continue.`);
+                // Check if this is a translation without markers - special handling
+                if (error.message === 'TRANSLATION_WITHOUT_MARKERS' && error.fullText) {
+                    console.log(`📝 Translation completed but markers missing. Showing fallback with pre-filled text.`);
+                    setFallbackChapterNumber(chapterNumber);
+                    setFallbackText(error.fullText); // Pre-fill with the actual translation
+                    setFallbackType('english'); // Set to English since it's already translated
+                    setShowFallbackInput(true);
+                    setIsTranslating(false);
+                    
+                    setStatus(`Chapter ${chapterNumber} translated successfully but formatting markers were missing. The translation has been loaded below for your review. You can edit it if needed or add it directly.`);
                 } else {
-                    setStatus(`Translation failed on chapter ${chapterNumber}. You can provide the Japanese text manually below to continue.`);
+                    // Regular error - show empty fallback input
+                    setFallbackChapterNumber(chapterNumber);
+                    setFallbackText('');
+                    setShowFallbackInput(true);
+                    setIsTranslating(false);
+                    
+                    if (translatedCount > 0) {
+                        setStatus(`Translation stopped at chapter ${chapterNumber}. Successfully translated ${translatedCount} chapter${translatedCount > 1 ? 's' : ''} (chapters ${newTranslatedChapters.map(ch => ch.chapterNumber).join(', ')}). You can provide the text manually below to continue.`);
+                    } else {
+                        setStatus(`Translation failed on chapter ${chapterNumber}. You can provide the text manually below to continue.`);
+                    }
                 }
                 
                 // Keep the progress at current level instead of resetting to 0
@@ -128,13 +210,15 @@ function App() {
         
         try {
             // Create a modified prompt for direct text translation
-            const directTranslationPrompt = `You are an expert translator and typesetter specializing in web novels. Your task is to translate the provided Japanese text into English, following a very strict set of rules for both content and formatting.
+            const fallbackSeriesContext = seriesName.trim() ? `\n\n**SERIES CONTEXT:**\nThis chapter is from the series: "${seriesName}"\nPlease use this series name as context for character name consistency, gender identification, and proper noun translations. Maintain consistent character name spellings and gender pronouns throughout the translation based on this series context.` : '';
+            
+            const directTranslationPrompt = `You are an expert translator and typesetter specializing in web novels. Your task is to translate the provided Japanese text into English, following a very strict set of rules for both content and formatting.${fallbackSeriesContext}
 
 **ABSOLUTELY CRITICAL: NO THINKING OR REASONING**
 You must NOT show any thinking process, analysis, or reasoning. Your response must contain ONLY the final translated chapter content.
 
 **OUTPUT FORMAT MARKERS:**
-You MUST start your response with exactly "{{start}}" followed by a newline, then provide your translation, and end with a newline followed by exactly "{{end}}".
+You MUST start your response with exactly "***TRANSLATION_START***" followed by a newline, then provide your translation, and end with a newline followed by exactly "***TRANSLATION_END***".
 
 **Required Output Format:**
 * **Line 1:** The translated chapter title, followed by the chapter number formatted as \`[chapter: ${fallbackChapterNumber}]\`.
@@ -145,8 +229,9 @@ You MUST start your response with exactly "{{start}}" followed by a newline, the
 2. **Dialogue:** Enclose all spoken dialogue in double quotation marks (\`"..."\`). Every change in speaker must begin on a new, separate paragraph.
 3. **Internal Thoughts:** When a character is thinking to themselves (internal monologue), format their thoughts in *italics*.
 4. **Scene Breaks:** If the original text uses a line of symbols (like \`………\` or \`* * *\`) to indicate a break in the scene, replace it with a clean, centered \`***\` on its own line, with blank lines above and below it.
+5. **Character Consistency:** Pay special attention to maintaining consistent character name spellings and correct gender pronouns throughout the translation.
 
-**REMEMBER: Start your response immediately with {{start}} then the chapter title. No explanations, no process descriptions.**
+**REMEMBER: Start your response immediately with ***TRANSLATION_START*** then the chapter title. No explanations, no process descriptions.**
 
 Now, please translate the following Japanese text:`;
 
@@ -241,8 +326,45 @@ Now, please translate the following Japanese text:`;
         }
     };
 
+    // Handle clearing all data
+    const handleClearAllData = () => {
+        const confirmMessage = `⚠️ WARNING: This will permanently delete ALL data including:
+
+• All form inputs (API key, URLs, settings)
+• All translated chapters
+• All saved progress
+
+This action cannot be undone. Are you absolutely sure?`;
+
+        if (confirm(confirmMessage)) {
+            // Clear localStorage
+            Object.values(STORAGE_KEYS).forEach(key => {
+                localStorage.removeItem(key);
+            });
+            
+            // Reset all state to defaults
+            setGeminiApiKey('');
+            setSelectedModel('gemini-2.5-flash');
+            setSite('syosetu');
+            setSeriesUrl('');
+            setSeriesName('');
+            setStartChapter(1);
+            setNumChapters(1);
+            setOutputFileName('translated_novel');
+            setTranslatedChapters([]);
+            setSelectedChapter(null);
+            setShowFallbackInput(false);
+            setFallbackText('');
+            setFallbackType('japanese');
+            setEditingChapter(null);
+            setEditText('');
+            
+            setStatus('All data cleared successfully.');
+        }
+    };
+
     // Independent translation function that creates a completely fresh AI instance for each chapter
-    const translateSingleChapter = async (apiKey: string, chapterUrl: string, model: string): Promise<string> => {
+    const translateSingleChapter = async (apiKey: string, chapterUrl: string, model: string, seriesName: string): Promise<string> => {
         // Create a completely fresh AI instance for this chapter only
         let ai: any = null;
         let response: any = null;
@@ -257,7 +379,9 @@ Now, please translate the following Japanese text:`;
 
             // Fresh configuration for this chapter only - completely isolated
             const tools = [{ urlContext: {} }];
-            const systemPrompt = `You are an expert translator and typesetter specializing in web novels. Your task is to translate the web novel chapter from the provided URL into English, following a very strict set of rules for both content and formatting.
+            const seriesContext = seriesName.trim() ? `\n\n**SERIES CONTEXT:**\nThis chapter is from the series: "${seriesName}"\nPlease use this series name as context for character name consistency, gender identification, and proper noun translations. Maintain consistent character name spellings and gender pronouns throughout the translation based on this series context.` : '';
+            
+            const systemPrompt = `You are an expert translator and typesetter specializing in web novels. Your task is to translate the web novel chapter from the provided URL into English, following a very strict set of rules for both content and formatting.${seriesContext}
 
 **ABSOLUTELY CRITICAL: NO THINKING OR REASONING**
 You must NOT show any thinking process, analysis, or reasoning. Do NOT include phrases like "I will translate", "Let me process", "Going through paragraph by paragraph", or any meta-commentary about your translation process. Your response must contain ONLY the final translated chapter content.
@@ -268,9 +392,10 @@ Your final output must be completely clean prose. It is absolutely forbidden to 
 **Core Instructions:**
 
 1.  **Use URL for Context:** Analyze the source page for character names, specific terms, and narrative tone to ensure a consistent and accurate translation.
-2.  **Translate Only, No Chatter:** Your entire output must be *only* the final translated chapter as per the format below. Do not add any introductory phrases, summaries, explanations, or conversation about the translation process.
-3.  **No Meta-Commentary:** Do not describe what you are doing, do not explain your process, do not mention translation steps.
-4.  **Direct Translation Only:** Start immediately with the chapter title and proceed directly to the translated content.
+2.  **Character Consistency:** Pay special attention to maintaining consistent character name spellings and correct gender pronouns throughout the translation.
+3.  **Translate Only, No Chatter:** Your entire output must be *only* the final translated chapter as per the format below. Do not add any introductory phrases, summaries, explanations, or conversation about the translation process.
+4.  **No Meta-Commentary:** Do not describe what you are doing, do not explain your process, do not mention translation steps.
+5.  **Direct Translation Only:** Start immediately with the chapter title and proceed directly to the translated content.
 
 **Required Output Format:**
 
@@ -294,14 +419,14 @@ Your final output must be completely clean prose. It is absolutely forbidden to 
 **REMEMBER: Start your response immediately with the chapter title. No explanations, no process descriptions, no thinking out loud.**
 
 **OUTPUT FORMAT MARKERS:**
-You MUST start your response with exactly "{{start}}" followed by a newline, then provide your translation, and end with a newline followed by exactly "{{end}}".
+You MUST start your response with exactly "***TRANSLATION_START***" followed by a newline, then provide your translation, and end with a newline followed by exactly "***TRANSLATION_END***".
 
 Example:
-{{start}}
+***TRANSLATION_START***
 Chapter Title [chapter: X]
 [translated content here]
 [source URL]
-{{end}}
+***TRANSLATION_END***
 
 Now, please process the following URL:`;
 
@@ -340,16 +465,42 @@ Now, please process the following URL:`;
                 throw new Error('Translation returned empty content. The chapter might be blocked or inaccessible.');
             }
             
-            // Extract text between {{start}} and {{end}} markers
-            const startMarker = '{{start}}';
-            const endMarker = '{{end}}';
+            // Debug: Log the first and last 200 characters of the response
+            console.log(`🔍 Response preview (first 200 chars): "${fullText.substring(0, 200)}..."`);
+            console.log(`🔍 Response preview (last 200 chars): "...${fullText.substring(Math.max(0, fullText.length - 200))}"`);
             
-            const startIndex = fullText.indexOf(startMarker);
-            const endIndex = fullText.lastIndexOf(endMarker);
+            // Extract text between markers - try multiple variations
+            const possibleStartMarkers = ['***TRANSLATION_START***', '{{start}}', '{{ start }}', '{start}', 'START:', '**START**'];
+            const possibleEndMarkers = ['***TRANSLATION_END***', '{{end}}', '{{ end }}', '{end}', 'END:', '**END**'];
+            
+            let startIndex = -1;
+            let endIndex = -1;
+            let usedStartMarker = '';
+            let usedEndMarker = '';
+            
+            // Try to find start marker
+            for (const marker of possibleStartMarkers) {
+                const index = fullText.toLowerCase().indexOf(marker.toLowerCase());
+                if (index !== -1) {
+                    startIndex = index;
+                    usedStartMarker = marker;
+                    break;
+                }
+            }
+            
+            // Try to find end marker
+            for (const marker of possibleEndMarkers) {
+                const index = fullText.toLowerCase().lastIndexOf(marker.toLowerCase());
+                if (index !== -1) {
+                    endIndex = index;
+                    usedEndMarker = marker;
+                    break;
+                }
+            }
             
             if (startIndex !== -1 && endIndex !== -1 && endIndex > startIndex) {
-                const extractedText = fullText.substring(startIndex + startMarker.length, endIndex).trim();
-                console.log(`📝 Extracted text between markers. Length: ${extractedText.length}`);
+                const extractedText = fullText.substring(startIndex + usedStartMarker.length, endIndex).trim();
+                console.log(`📝 Extracted text using markers "${usedStartMarker}" and "${usedEndMarker}". Length: ${extractedText.length}`);
                 
                 // Check if extracted text is empty
                 if (!extractedText || extractedText.trim().length === 0) {
@@ -358,8 +509,16 @@ Now, please process the following URL:`;
                 
                 return extractedText;
             } else {
-                console.warn(`⚠️ Start/end markers not found in response`);
-                throw new Error('Translation markers {{start}} and {{end}} not found in response. The AI may not have followed the prompt correctly.');
+                console.warn(`⚠️ No valid markers found in response. Tried: ${possibleStartMarkers.join(', ')} / ${possibleEndMarkers.join(', ')}`);
+                
+                // If the response looks like a valid translation (contains chapter info), offer it as fallback
+                if (fullText.includes('[chapter:') || fullText.includes('chapter') || fullText.length > 100) {
+                    const fallbackError = new Error('TRANSLATION_WITHOUT_MARKERS');
+                    (fallbackError as any).fullText = fullText; // Attach the full response
+                    throw fallbackError;
+                } else {
+                    throw new Error('Translation markers not found and response doesn\'t appear to be a valid translation.');
+                }
             }
 
         } catch (error) {
@@ -381,7 +540,7 @@ Now, please process the following URL:`;
         while (retries < maxRetries) {
             try {
                 // Each attempt creates a completely independent AI instance
-                return await translateSingleChapter(apiKey, chapterUrl, selectedModel);
+                return await translateSingleChapter(apiKey, chapterUrl, selectedModel, seriesName);
             } catch (error: any) {
                 console.error(`🔄 Attempt ${retries + 1} failed for ${chapterUrl}:`, error);
                 retries++;
@@ -633,6 +792,18 @@ Now, please process the following URL:`;
             </div>
 
             <div className="input-group">
+                <label htmlFor="seriesName">Series Name (Optional):</label>
+                <input 
+                    type="text" 
+                    id="seriesName" 
+                    placeholder="e.g., The Villainess Who Doesn't Want to Be Ruined" 
+                    value={seriesName}
+                    onChange={(e) => setSeriesName(e.target.value)}
+                />
+                <small className="input-help">Helps AI maintain consistent character names and genders across chapters</small>
+            </div>
+
+            <div className="input-group">
                 <label htmlFor="startChapter">Start Chapter:</label>
                 <input 
                     type="number" 
@@ -667,6 +838,17 @@ Now, please process the following URL:`;
             <div className="button-group">
                 <button id="translateButton" onClick={handleTranslate} disabled={isTranslating}>Translate</button>
                 <button id="downloadButton" onClick={handleDownload} disabled={translatedChapters.length === 0 || isTranslating}>Download EPUB</button>
+            </div>
+
+            <div className="clear-data-section">
+                <button 
+                    className="clear-data-button" 
+                    onClick={handleClearAllData} 
+                    disabled={isTranslating}
+                    title="Clear all saved data including form inputs and translated chapters"
+                >
+                    🗑️ Clear All Data
+                </button>
             </div>
 
             <div id="status" className="status">{status}</div>
@@ -718,6 +900,17 @@ Now, please process the following URL:`;
                         <button onClick={handleFallbackSubmit} disabled={!fallbackText.trim()}>
                             {fallbackType === 'japanese' ? 'Translate Text' : 'Add Text'}
                         </button>
+                        {fallbackType === 'english' && fallbackText.trim() && (
+                            <button 
+                                onClick={() => {
+                                    setFallbackType('japanese');
+                                    setFallbackText('');
+                                }} 
+                                className="retry-button"
+                            >
+                                Try Again (Translate from Japanese)
+                            </button>
+                        )}
                         <button onClick={() => setShowFallbackInput(false)} className="cancel-button">
                             Cancel
                         </button>
