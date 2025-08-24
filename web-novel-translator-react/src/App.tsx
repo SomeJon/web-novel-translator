@@ -17,6 +17,7 @@ function App() {
     const [translatedChapters, setTranslatedChapters] = useState<Array<{ chapterNumber: number; translatedText: string }>>([]);
     const [translationProgress, setTranslationProgress] = useState<number>(0); // 0-100
     const [previewText, setPreviewText] = useState<string>(''); // New state for preview text
+    const [selectedChapter, setSelectedChapter] = useState<number | null>(null); // For chapter selector
 
     const handleTranslate = async () => {
         if (!geminiApiKey) {
@@ -85,9 +86,6 @@ function App() {
           ];
         
         const config = {
-            thinkingConfig: {
-              thinkingBudget: -1,
-            },
             tools,
             systemInstruction: [
                 {
@@ -126,7 +124,7 @@ function App() {
                 }
             ],
         };
-        const modelName = 'gemini-2.5-flash';
+        const model = 'gemini-2.5-flash';
         const contents = [
             {
                 role: 'user',
@@ -141,17 +139,30 @@ function App() {
         const maxRetries = 3;
         let retries = 0;
 
+        console.log('Sending Gemini API request:');
+        console.log('Model:', model);
+        console.log('Config:', JSON.stringify(config, null, 2));
+        console.log('Contents:', JSON.stringify(contents, null, 2));
+        console.log('Chapter URL being sent:', chapterUrl);
+
         while (retries < maxRetries) {
             try {
                 const response = await ai.models.generateContentStream({
-                    modelName,
-                    contents,
+                    model,
                     config,
+                    contents,
                 });
                 let fullText = '';
-                for await (const chunk of response.stream) {
-                    fullText += chunk.text();
+                for await (const chunk of response) {
+                    // Extract text from chunk
+                    let chunkText = '';
+                    if (chunk.candidates && chunk.candidates[0] && chunk.candidates[0].content && chunk.candidates[0].content.parts) {
+                        chunkText = chunk.candidates[0].content.parts.map((part: any) => part.text).join('');
+                    }
+                    fullText += chunkText;
                 }
+                console.log('Full translated text length:', fullText.length);
+                console.log('Full translated text preview:', fullText.substring(0, 200) + '...');
                 return fullText;
             } catch (error) {
                 console.error(`Attempt ${retries + 1} failed for ${chapterUrl}:`, error);
@@ -186,21 +197,28 @@ function App() {
             translatedChapters.sort((a, b) => a.chapterNumber - b.chapterNumber);
 
             for (const chapter of translatedChapters) {
-                const lines = chapter.translatedText.split('\n').filter(line => line.trim() !== '');
+                const allLines = chapter.translatedText.split('\n');
+                const nonEmptyLines = allLines.filter(line => line.trim() !== '');
                 let title = `Chapter ${chapter.chapterNumber}`;
                 let content = chapter.translatedText;
 
-                if (lines.length > 0) {
-                    const firstLine = lines[0];
+                if (nonEmptyLines.length > 0) {
+                    const firstLine = nonEmptyLines[0];
                     const titleMatch = firstLine.match(/^(.*)\[chapter: \d+\]$/i);
                     if (titleMatch && titleMatch[1]) {
                         title = titleMatch[1].trim();
-                        // Remove the title line and the URL line from the content
-                        // The last line is the URL, the first is the title. So we slice to exclude them.
-                        content = lines.slice(1, lines.length - 1).join('\n\n'); 
+                        // Remove the title line and the URL line, but preserve line breaks
+                        const titleLineIndex = allLines.findIndex(line => line.trim() === firstLine.trim());
+                        const urlLineIndex = allLines.findLastIndex(line => line.trim().startsWith('https://'));
+                        if (titleLineIndex >= 0 && urlLineIndex >= 0) {
+                            content = allLines.slice(titleLineIndex + 1, urlLineIndex).join('\n').trim();
+                        }
                     } else {
                         // If no specific title format found, remove only the URL line
-                        content = lines.slice(0, lines.length - 1).join('\n\n');
+                        const urlLineIndex = allLines.findLastIndex(line => line.trim().startsWith('https://'));
+                        if (urlLineIndex >= 0) {
+                            content = allLines.slice(0, urlLineIndex).join('\n').trim();
+                        }
                     }
                 }
 
@@ -309,10 +327,35 @@ function App() {
                     </div>
                 </div>
             )}
-            {previewText && (
+            {translatedChapters.length > 0 && (
                 <div className="preview-text-container">
-                    <h2>Translated Chapter Preview</h2>
-                    <pre>{previewText}</pre>
+                    <h2>Translated Chapters</h2>
+                    <div className="chapter-selector">
+                        <label htmlFor="chapterSelect">Select Chapter to View:</label>
+                        <select 
+                            id="chapterSelect" 
+                            value={selectedChapter || ''}
+                            onChange={(e) => setSelectedChapter(e.target.value ? parseInt(e.target.value) : null)}
+                        >
+                            <option value="">-- Select a chapter --</option>
+                            {translatedChapters
+                                .sort((a, b) => a.chapterNumber - b.chapterNumber)
+                                .map(chapter => (
+                                    <option key={chapter.chapterNumber} value={chapter.chapterNumber}>
+                                        Chapter {chapter.chapterNumber}
+                                    </option>
+                                ))
+                            }
+                        </select>
+                    </div>
+                    {selectedChapter && (
+                        <div className="chapter-content">
+                            <h3>Chapter {selectedChapter}</h3>
+                            <pre className="chapter-text">
+                                {translatedChapters.find(ch => ch.chapterNumber === selectedChapter)?.translatedText || 'Chapter not found'}
+                            </pre>
+                        </div>
+                    )}
       </div>
             )}
       </div>
