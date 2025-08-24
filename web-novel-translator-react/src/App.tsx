@@ -19,6 +19,11 @@ function App() {
     const [translationProgress, setTranslationProgress] = useState<number>(0); // 0-100
     // const [previewText, setPreviewText] = useState<string>(''); // Removed - using chapter selector instead
     const [selectedChapter, setSelectedChapter] = useState<number | null>(null); // For chapter selector
+    const [showFallbackInput, setShowFallbackInput] = useState<boolean>(false);
+    const [fallbackChapterNumber, setFallbackChapterNumber] = useState<number>(0);
+    const [fallbackText, setFallbackText] = useState<string>('');
+    const [editingChapter, setEditingChapter] = useState<number | null>(null);
+    const [editText, setEditText] = useState<string>('');
 
     const handleTranslate = async () => {
         if (!geminiApiKey) {
@@ -65,14 +70,20 @@ function App() {
                 setTranslatedChapters(newTranslatedChapters);
                 
                 const translatedCount = newTranslatedChapters.length;
+                console.error(`Error translating chapter ${chapterNumber}:`, error);
+                
+                // Show fallback input for manual text entry
+                setFallbackChapterNumber(chapterNumber);
+                setFallbackText('');
+                setShowFallbackInput(true);
+                setIsTranslating(false);
+                
                 if (translatedCount > 0) {
-                    setStatus(`Translation stopped at chapter ${chapterNumber}. Successfully translated ${translatedCount} chapter${translatedCount > 1 ? 's' : ''} (chapters ${newTranslatedChapters.map(ch => ch.chapterNumber).join(', ')}). Error: ${error.message}`);
+                    setStatus(`Translation stopped at chapter ${chapterNumber}. Successfully translated ${translatedCount} chapter${translatedCount > 1 ? 's' : ''} (chapters ${newTranslatedChapters.map(ch => ch.chapterNumber).join(', ')}). You can provide the Japanese text manually below to continue.`);
                 } else {
-                    setStatus(`Translation failed on first chapter ${chapterNumber}: ${error.message}`);
+                    setStatus(`Translation failed on chapter ${chapterNumber}. You can provide the Japanese text manually below to continue.`);
                 }
                 
-                console.error(`Error translating chapter ${chapterNumber}:`, error);
-                setIsTranslating(false);
                 // Keep the progress at current level instead of resetting to 0
                 setTranslationProgress(Math.round((translatedCount / numChapters) * 100));
                 return;
@@ -86,6 +97,115 @@ function App() {
         setTranslatedChapters(newTranslatedChapters);
         setStatus('All chapters translated. Ready to download EPUB.');
         setIsTranslating(false);
+    };
+
+    // Handle fallback manual text input
+    const handleFallbackSubmit = async () => {
+        if (!fallbackText.trim()) {
+            setStatus('Please enter the Japanese text for translation.');
+            return;
+        }
+
+        setStatus(`Translating manually provided text for chapter ${fallbackChapterNumber}...`);
+        
+        try {
+            // Create a modified prompt for direct text translation
+            const directTranslationPrompt = `You are an expert translator and typesetter specializing in web novels. Your task is to translate the provided Japanese text into English, following a very strict set of rules for both content and formatting.
+
+**ABSOLUTELY CRITICAL: NO THINKING OR REASONING**
+You must NOT show any thinking process, analysis, or reasoning. Your response must contain ONLY the final translated chapter content.
+
+**OUTPUT FORMAT MARKERS:**
+You MUST start your response with exactly "{{start}}" followed by a newline, then provide your translation, and end with a newline followed by exactly "{{end}}".
+
+**Required Output Format:**
+* **Line 1:** The translated chapter title, followed by the chapter number formatted as \`[chapter: ${fallbackChapterNumber}]\`.
+* **Body:** The full, translated text of the chapter's body, formatted according to the detailed rules below.
+
+**Detailed Formatting Rules for the Chapter Body:**
+1. **Paragraph Spacing:** Separate every paragraph with a single blank line (i.e., double-spaced). This includes lines of dialogue. This is the most important formatting rule.
+2. **Dialogue:** Enclose all spoken dialogue in double quotation marks (\`"..."\`). Every change in speaker must begin on a new, separate paragraph.
+3. **Internal Thoughts:** When a character is thinking to themselves (internal monologue), format their thoughts in *italics*.
+4. **Scene Breaks:** If the original text uses a line of symbols (like \`………\` or \`* * *\`) to indicate a break in the scene, replace it with a clean, centered \`***\` on its own line, with blank lines above and below it.
+
+**REMEMBER: Start your response immediately with {{start}} then the chapter title. No explanations, no process descriptions.**
+
+Now, please translate the following Japanese text:`;
+
+            const ai = new GoogleGenAI({ apiKey: geminiApiKey });
+            const config = {
+                systemInstruction: [{ text: directTranslationPrompt }],
+            };
+            const contents = [{
+                role: 'user',
+                parts: [{ text: fallbackText }],
+            }];
+
+            const response = await ai.models.generateContentStream({
+                model: selectedModel,
+                config,
+                contents,
+            });
+
+            let fullText = '';
+            for await (const chunk of response) {
+                if (chunk.candidates && chunk.candidates[0] && chunk.candidates[0].content && chunk.candidates[0].content.parts) {
+                    const chunkText = chunk.candidates[0].content.parts.map((part: any) => part.text).join('');
+                    fullText += chunkText;
+                }
+            }
+
+            // Extract text between {{start}} and {{end}} markers
+            const startMarker = '{{start}}';
+            const endMarker = '{{end}}';
+            const startIndex = fullText.indexOf(startMarker);
+            const endIndex = fullText.lastIndexOf(endMarker);
+            
+            let extractedText = fullText;
+            if (startIndex !== -1 && endIndex !== -1 && endIndex > startIndex) {
+                extractedText = fullText.substring(startIndex + startMarker.length, endIndex).trim();
+            }
+
+            // Add the translated chapter to the list
+            const updatedChapters = [...translatedChapters, { chapterNumber: fallbackChapterNumber, translatedText: extractedText }];
+            setTranslatedChapters(updatedChapters);
+            
+            // Hide fallback input and continue
+            setShowFallbackInput(false);
+            setFallbackText('');
+            setStatus(`Chapter ${fallbackChapterNumber} translated manually. Ready to download EPUB or continue with remaining chapters.`);
+
+        } catch (error: any) {
+            setStatus(`Error translating manual text for chapter ${fallbackChapterNumber}: ${error.message}`);
+        }
+    };
+
+    // Handle chapter editing
+    const handleEditChapter = (chapterNumber: number) => {
+        const chapter = translatedChapters.find(ch => ch.chapterNumber === chapterNumber);
+        if (chapter) {
+            setEditingChapter(chapterNumber);
+            setEditText(chapter.translatedText);
+        }
+    };
+
+    const handleSaveEdit = () => {
+        if (editingChapter !== null) {
+            const updatedChapters = translatedChapters.map(ch => 
+                ch.chapterNumber === editingChapter 
+                    ? { ...ch, translatedText: editText }
+                    : ch
+            );
+            setTranslatedChapters(updatedChapters);
+            setEditingChapter(null);
+            setEditText('');
+            setStatus(`Chapter ${editingChapter} updated successfully.`);
+        }
+    };
+
+    const handleCancelEdit = () => {
+        setEditingChapter(null);
+        setEditText('');
     };
 
     // Independent translation function that creates a completely fresh AI instance for each chapter
@@ -510,6 +630,29 @@ Now, please process the following URL:`;
                     </div>
                 </div>
             )}
+            
+            {showFallbackInput && (
+                <div className="fallback-input-container">
+                    <h3>Manual Text Input for Chapter {fallbackChapterNumber}</h3>
+                    <p>Translation failed for this chapter. Please paste the Japanese text below:</p>
+                    <textarea
+                        className="fallback-textarea"
+                        value={fallbackText}
+                        onChange={(e) => setFallbackText(e.target.value)}
+                        placeholder="Paste Japanese text here..."
+                        rows={10}
+                    />
+                    <div className="fallback-buttons">
+                        <button onClick={handleFallbackSubmit} disabled={!fallbackText.trim()}>
+                            Translate Text
+                        </button>
+                        <button onClick={() => setShowFallbackInput(false)} className="cancel-button">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            )}
+            
             {translatedChapters.length > 0 && (
                 <div className="preview-text-container">
                     <h2>Translated Chapters</h2>
@@ -533,10 +676,39 @@ Now, please process the following URL:`;
                     </div>
                     {selectedChapter && (
                         <div className="chapter-content">
-                            <h3>Chapter {selectedChapter}</h3>
-                            <pre className="chapter-text">
-                                {translatedChapters.find(ch => ch.chapterNumber === selectedChapter)?.translatedText || 'Chapter not found'}
-                            </pre>
+                            <div className="chapter-header">
+                                <h3>Chapter {selectedChapter}</h3>
+                                <button 
+                                    className="edit-button"
+                                    onClick={() => handleEditChapter(selectedChapter)}
+                                    disabled={editingChapter !== null}
+                                >
+                                    {editingChapter === selectedChapter ? 'Editing...' : 'Edit Chapter'}
+                                </button>
+                            </div>
+                            
+                            {editingChapter === selectedChapter ? (
+                                <div className="edit-container">
+                                    <textarea
+                                        className="edit-textarea"
+                                        value={editText}
+                                        onChange={(e) => setEditText(e.target.value)}
+                                        rows={20}
+                                    />
+                                    <div className="edit-buttons">
+                                        <button onClick={handleSaveEdit} className="save-button">
+                                            Save Changes
+                                        </button>
+                                        <button onClick={handleCancelEdit} className="cancel-button">
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <pre className="chapter-text">
+                                    {translatedChapters.find(ch => ch.chapterNumber === selectedChapter)?.translatedText || 'Chapter not found'}
+                                </pre>
+                            )}
                         </div>
                     )}
       </div>
