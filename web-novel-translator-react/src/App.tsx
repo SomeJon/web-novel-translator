@@ -16,7 +16,7 @@ function App() {
     const [isTranslating, setIsTranslating] = useState<boolean>(false);
     const [translatedChapters, setTranslatedChapters] = useState<Array<{ chapterNumber: number; translatedText: string }>>([]);
     const [translationProgress, setTranslationProgress] = useState<number>(0); // 0-100
-    const [previewText, setPreviewText] = useState<string>(''); // New state for preview text
+    // const [previewText, setPreviewText] = useState<string>(''); // Removed - using chapter selector instead
     const [selectedChapter, setSelectedChapter] = useState<number | null>(null); // For chapter selector
 
     const handleTranslate = async () => {
@@ -58,7 +58,7 @@ function App() {
                 const translatedText = await callGeminiApi(geminiApiKey, chapterUrl);
                 newTranslatedChapters.push({ chapterNumber, translatedText });
                 setTranslationProgress(Math.round(((i + 1) / numChapters) * 100));
-                setPreviewText(translatedText); // Update preview text with the latest translation
+                // Preview text now handled by chapter selector
             } catch (error: any) {
                 setStatus(`Error translating chapter ${chapterNumber}: ${error.message}`);
                 console.error(`Error translating chapter ${chapterNumber}:`, error);
@@ -77,104 +77,150 @@ function App() {
         setIsTranslating(false);
     };
 
-    const callGeminiApi = async (apiKey: string, chapterUrl: string): Promise<string> => {
-        const ai = new GoogleGenAI({
-            apiKey: apiKey
-          });
-        const tools = [
-            { urlContext: {} },
-          ];
+    // Independent translation function that creates a completely fresh AI instance for each chapter
+    const translateSingleChapter = async (apiKey: string, chapterUrl: string): Promise<string> => {
+        // Create a completely fresh AI instance for this chapter only
+        let ai: any = null;
+        let response: any = null;
         
-        const config = {
-            tools,
-            systemInstruction: [
-                {
-                  text: `You are an expert translator and typesetter specializing in web novels. Your task is to translate the web novel chapter from the provided URL into English, following a very strict set of rules for both content and formatting.
-        
-        **CRITICAL INSTRUCTION: CLEAN OUTPUT**
-        Your final output must be completely clean prose. It is absolutely forbidden to include any form of in-line citation markers like \`[1]\`, source numbers, footnotes, or any other annotations within the translated text. The text must appear as it would in a published book. You must also remove any extraneous text from the source page, such as "Sources," "help," or the original Japanese title at the end of the text.
-        
-        **Core Instructions:**
-        
-        1.  **Use URL for Context:** Analyze the source page for character names, specific terms, and narrative tone to ensure a consistent and accurate translation.
-        2.  **Translate Only, No Chatter:** Your entire output must be *only* the final translated chapter as per the format below. Do not add any introductory phrases, summaries, or conversation.
-        3.  **Final Review Step:** Before providing the final output, review your own generated text one last time to ensure you have perfectly followed all content and formatting rules and have removed every single citation marker and all extra footer text.
-        
-        **Required Output Format:**
-        
-        * **Line 1:** The translated chapter title, followed by the chapter number formatted as \`[chapter: X]\`.
-            * **Example:** \`The Crimson Contract [chapter: 214]\`
-        * **Body:** The full, translated text of the chapter's body, formatted according to the detailed rules below.
-        * **Final Line:** The original source URL that was provided for translation.
-        
-        ---
-        **Detailed Formatting Rules for the Chapter Body:**
-        
-        1.  **Paragraph Spacing:** Separate every paragraph with a single blank line (i.e., double-spaced). This includes lines of dialogue. This is the most important formatting rule.
-        2.  **Dialogue:** Enclose all spoken dialogue in double quotation marks (\`“...”\`). Every change in speaker must begin on a new, separate paragraph.
-        3.  **Internal Thoughts:** When a character is thinking to themselves (internal monologue), format their thoughts in *italics*.
-        4.  **Scene Breaks:** If the original text uses a line of symbols (like \`………\` or \`* * *\`) to indicate a break in the scene, replace it with a clean, centered \`***\` on its own line, with blank lines above and below it.
-        ---
-        
-        **Constraint:**
-        * Do not include the name of the web novel anywhere in your output (except for the URL at the very end).
-        
-        Now, please process the following URL:
-        `,
-                }
-            ],
-        };
-        const model = 'gemini-2.5-flash';
-        const contents = [
-            {
-                role: 'user',
-                parts: [
-                    {
-                        text: chapterUrl,
-                    },
-                ],
-            },
-        ];
+        try {
+            console.log(`🔄 Creating fresh AI instance for: ${chapterUrl}`);
+            
+            // Fresh AI instance - no history, no state, no memory
+            ai = new GoogleGenAI({
+                apiKey: apiKey
+            });
 
+            // Fresh configuration for this chapter only - completely isolated
+            const tools = [{ urlContext: {} }];
+            const systemPrompt = `You are an expert translator and typesetter specializing in web novels. Your task is to translate the web novel chapter from the provided URL into English, following a very strict set of rules for both content and formatting.
+
+**CRITICAL INSTRUCTION: CLEAN OUTPUT**
+Your final output must be completely clean prose. It is absolutely forbidden to include any form of in-line citation markers like \`[1]\`, source numbers, footnotes, or any other annotations within the translated text. The text must appear as it would in a published book. You must also remove any extraneous text from the source page, such as "Sources," "help," or the original Japanese title at the end of the text.
+
+**Core Instructions:**
+
+1.  **Use URL for Context:** Analyze the source page for character names, specific terms, and narrative tone to ensure a consistent and accurate translation.
+2.  **Translate Only, No Chatter:** Your entire output must be *only* the final translated chapter as per the format below. Do not add any introductory phrases, summaries, or conversation.
+3.  **Final Review Step:** Before providing the final output, review your own generated text one last time to ensure you have perfectly followed all content and formatting rules and have removed every single citation marker and all extra footer text.
+
+**Required Output Format:**
+
+*   **Line 1:** The translated chapter title, followed by the chapter number formatted as \`[chapter: X]\`.
+    *   **Example:** \`The Crimson Contract [chapter: 214]\`
+*   **Body:** The full, translated text of the chapter's body, formatted according to the detailed rules below.
+*   **Final Line:** The original source URL that was provided for translation.
+
+---
+**Detailed Formatting Rules for the Chapter Body:**
+
+1.  **Paragraph Spacing:** Separate every paragraph with a single blank line (i.e., double-spaced). This includes lines of dialogue. This is the most important formatting rule.
+2.  **Dialogue:** Enclose all spoken dialogue in double quotation marks (\`"..."\`). Every change in speaker must begin on a new, separate paragraph.
+3.  **Internal Thoughts:** When a character is thinking to themselves (internal monologue), format their thoughts in *italics*.
+4.  **Scene Breaks:** If the original text uses a line of symbols (like \`………\` or \`* * *\`) to indicate a break in the scene, replace it with a clean, centered \`***\` on its own line, with blank lines above and below it.
+---
+
+**Constraint:**
+*   Do not include the name of the web novel anywhere in your output (except for the URL at the very end).
+
+Now, please process the following URL:`;
+
+            const config = {
+                tools,
+                systemInstruction: [{ text: systemPrompt }],
+            };
+
+            const contents = [{
+                role: 'user',
+                parts: [{ text: chapterUrl }],
+            }];
+
+            console.log(`📤 Sending isolated request for: ${chapterUrl}`);
+
+            // Make the API call with completely fresh instance
+            response = await ai.models.generateContentStream({
+                model: 'gemini-2.5-flash',
+                config,
+                contents,
+            });
+
+            // Extract text from response
+            let fullText = '';
+            for await (const chunk of response) {
+                if (chunk.candidates && chunk.candidates[0] && chunk.candidates[0].content && chunk.candidates[0].content.parts) {
+                    const chunkText = chunk.candidates[0].content.parts.map((part: any) => part.text).join('');
+                    fullText += chunkText;
+                }
+            }
+
+            console.log(`✅ Translation completed for ${chapterUrl}. Length: ${fullText.length}`);
+            
+            return fullText;
+
+        } catch (error) {
+            console.error(`❌ Fresh translation failed for ${chapterUrl}:`, error);
+            throw error;
+        } finally {
+            // Explicitly clear all references to ensure complete cleanup
+            ai = null;
+            response = null;
+            console.log(`🗑️ AI instance destroyed for: ${chapterUrl}`);
+        }
+    };
+
+    // Main API function with retry logic - each retry gets a completely fresh instance
+    const callGeminiApi = async (apiKey: string, chapterUrl: string): Promise<string> => {
         const maxRetries = 3;
         let retries = 0;
 
-        console.log('Sending Gemini API request:');
-        console.log('Model:', model);
-        console.log('Config:', JSON.stringify(config, null, 2));
-        console.log('Contents:', JSON.stringify(contents, null, 2));
-        console.log('Chapter URL being sent:', chapterUrl);
-
         while (retries < maxRetries) {
             try {
-                const response = await ai.models.generateContentStream({
-                    model,
-                    config,
-                    contents,
-                });
-                let fullText = '';
-                for await (const chunk of response) {
-                    // Extract text from chunk
-                    let chunkText = '';
-                    if (chunk.candidates && chunk.candidates[0] && chunk.candidates[0].content && chunk.candidates[0].content.parts) {
-                        chunkText = chunk.candidates[0].content.parts.map((part: any) => part.text).join('');
-                    }
-                    fullText += chunkText;
-                }
-                console.log('Full translated text length:', fullText.length);
-                console.log('Full translated text preview:', fullText.substring(0, 200) + '...');
-                return fullText;
+                // Each attempt creates a completely independent AI instance
+                return await translateSingleChapter(apiKey, chapterUrl);
             } catch (error) {
-                console.error(`Attempt ${retries + 1} failed for ${chapterUrl}:`, error);
+                console.error(`🔄 Attempt ${retries + 1} failed for ${chapterUrl}:`, error);
                 retries++;
                 if (retries < maxRetries) {
-                    await new Promise(resolve => setTimeout(resolve, 1000)); // 1-second retry delay
+                    console.log(`⏳ Waiting 1 second before creating fresh instance for retry ${retries + 1}...`);
+                    await new Promise(resolve => setTimeout(resolve, 1000));
                 } else {
-                    throw error; // Re-throw error if max retries reached
+                    throw error;
                 }
             }
         }
-        throw new Error('Failed to translate chapter after multiple retries.'); // Should not be reached
+        throw new Error('Failed to translate chapter after multiple fresh attempts.');
+    };
+
+    // Convert plain text with line breaks to proper HTML for EPUB
+    const convertTextToHTML = (text: string): string => {
+        // Split text into paragraphs (double line breaks indicate paragraph breaks)
+        const paragraphs = text.split('\n\n');
+        
+        let htmlContent = '';
+        
+        for (const paragraph of paragraphs) {
+            if (paragraph.trim() === '') continue;
+            
+            // Handle scene breaks (*** on its own line)
+            if (paragraph.trim() === '***') {
+                htmlContent += '<div style="text-align: center; margin: 1em 0; font-weight: bold;">***</div>\n';
+                continue;
+            }
+            
+            // Process the paragraph for italics and dialogue
+            let processedParagraph = paragraph.trim();
+            
+            // Convert *italics* to <em>italics</em>
+            processedParagraph = processedParagraph.replace(/\*(.*?)\*/g, '<em>$1</em>');
+            
+            // Handle single line breaks within paragraphs (preserve them as <br>)
+            processedParagraph = processedParagraph.replace(/\n/g, '<br>');
+            
+            // Wrap in paragraph tags
+            htmlContent += `<p>${processedParagraph}</p>\n`;
+        }
+        
+        return htmlContent;
     };
 
     const handleDownload = async () => {
@@ -209,15 +255,17 @@ function App() {
                         title = titleMatch[1].trim();
                         // Remove the title line and the URL line, but preserve line breaks
                         const titleLineIndex = allLines.findIndex(line => line.trim() === firstLine.trim());
-                        const urlLineIndex = allLines.findLastIndex(line => line.trim().startsWith('https://'));
+                        const urlLineIndex = allLines.map((line, index) => line.trim().startsWith('https://') ? index : -1).filter(index => index !== -1).pop() ?? -1;
                         if (titleLineIndex >= 0 && urlLineIndex >= 0) {
-                            content = allLines.slice(titleLineIndex + 1, urlLineIndex).join('\n').trim();
+                            const rawContent = allLines.slice(titleLineIndex + 1, urlLineIndex).join('\n').trim();
+                            content = convertTextToHTML(rawContent);
                         }
                     } else {
                         // If no specific title format found, remove only the URL line
-                        const urlLineIndex = allLines.findLastIndex(line => line.trim().startsWith('https://'));
+                        const urlLineIndex = allLines.map((line, index) => line.trim().startsWith('https://') ? index : -1).filter(index => index !== -1).pop() ?? -1;
                         if (urlLineIndex >= 0) {
-                            content = allLines.slice(0, urlLineIndex).join('\n').trim();
+                            const rawContent = allLines.slice(0, urlLineIndex).join('\n').trim();
+                            content = convertTextToHTML(rawContent);
                         }
                     }
                 }
