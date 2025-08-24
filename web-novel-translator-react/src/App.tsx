@@ -22,6 +22,7 @@ function App() {
     const [showFallbackInput, setShowFallbackInput] = useState<boolean>(false);
     const [fallbackChapterNumber, setFallbackChapterNumber] = useState<number>(0);
     const [fallbackText, setFallbackText] = useState<string>('');
+    const [fallbackType, setFallbackType] = useState<'japanese' | 'english'>('japanese');
     const [editingChapter, setEditingChapter] = useState<number | null>(null);
     const [editText, setEditText] = useState<string>('');
 
@@ -37,17 +38,24 @@ function App() {
         }
 
         setIsTranslating(true);
-        setTranslatedChapters([]);
         setStatus('Starting translation...');
         setTranslationProgress(0);
 
-        const newTranslatedChapters: Array<{ chapterNumber: number; translatedText: string }> = [];
+        // Keep existing chapters, only add new ones
+        const newTranslatedChapters: Array<{ chapterNumber: number; translatedText: string }> = [...translatedChapters];
 
         const seriesIdMatch = seriesUrl.match(/ncode\.syosetu\.com\/(n\d+[a-zA-Z]+)/);
         const seriesIdentifier = seriesIdMatch && seriesIdMatch[1] ? seriesIdMatch[1] : seriesUrl; // Use series ID or full URL as fallback
 
         for (let i = 0; i < numChapters; i++) {
             const chapterNumber = startChapter + i;
+            
+            // Skip if chapter already exists
+            if (newTranslatedChapters.find(ch => ch.chapterNumber === chapterNumber)) {
+                setStatus(`Skipping chapter ${chapterNumber} (already translated)...`);
+                continue;
+            }
+            
             let chapterUrl;
 
             if (site === 'syosetu') {
@@ -102,11 +110,21 @@ function App() {
     // Handle fallback manual text input
     const handleFallbackSubmit = async () => {
         if (!fallbackText.trim()) {
-            setStatus('Please enter the Japanese text for translation.');
+            setStatus(`Please enter the ${fallbackType === 'japanese' ? 'Japanese text for translation' : 'English translation'}.`);
             return;
         }
 
-        setStatus(`Translating manually provided text for chapter ${fallbackChapterNumber}...`);
+        if (fallbackType === 'english') {
+            // Direct English input - no translation needed
+            const updatedChapters = [...translatedChapters, { chapterNumber: fallbackChapterNumber, translatedText: fallbackText.trim() }];
+            setTranslatedChapters(updatedChapters);
+            setShowFallbackInput(false);
+            setFallbackText('');
+            setStatus(`Chapter ${fallbackChapterNumber} added manually. Ready to download EPUB or continue with remaining chapters.`);
+            return;
+        }
+
+        setStatus(`Translating manually provided Japanese text for chapter ${fallbackChapterNumber}...`);
         
         try {
             // Create a modified prompt for direct text translation
@@ -208,6 +226,21 @@ Now, please translate the following Japanese text:`;
         setEditText('');
     };
 
+    // Handle chapter deletion
+    const handleDeleteChapter = (chapterNumber: number) => {
+        if (confirm(`Are you sure you want to delete Chapter ${chapterNumber}?`)) {
+            const updatedChapters = translatedChapters.filter(ch => ch.chapterNumber !== chapterNumber);
+            setTranslatedChapters(updatedChapters);
+            
+            // Clear selected chapter if it was deleted
+            if (selectedChapter === chapterNumber) {
+                setSelectedChapter(null);
+            }
+            
+            setStatus(`Chapter ${chapterNumber} deleted successfully.`);
+        }
+    };
+
     // Independent translation function that creates a completely fresh AI instance for each chapter
     const translateSingleChapter = async (apiKey: string, chapterUrl: string, model: string): Promise<string> => {
         // Create a completely fresh AI instance for this chapter only
@@ -302,6 +335,11 @@ Now, please process the following URL:`;
 
             console.log(`✅ Translation completed for ${chapterUrl}. Length: ${fullText.length}`);
             
+            // Check if translation is empty
+            if (!fullText || fullText.trim().length === 0) {
+                throw new Error('Translation returned empty content. The chapter might be blocked or inaccessible.');
+            }
+            
             // Extract text between {{start}} and {{end}} markers
             const startMarker = '{{start}}';
             const endMarker = '{{end}}';
@@ -312,10 +350,16 @@ Now, please process the following URL:`;
             if (startIndex !== -1 && endIndex !== -1 && endIndex > startIndex) {
                 const extractedText = fullText.substring(startIndex + startMarker.length, endIndex).trim();
                 console.log(`📝 Extracted text between markers. Length: ${extractedText.length}`);
+                
+                // Check if extracted text is empty
+                if (!extractedText || extractedText.trim().length === 0) {
+                    throw new Error('Translation markers found but content is empty. The translation may have failed.');
+                }
+                
                 return extractedText;
             } else {
-                console.warn(`⚠️ Start/end markers not found, returning full text`);
-                return fullText;
+                console.warn(`⚠️ Start/end markers not found in response`);
+                throw new Error('Translation markers {{start}} and {{end}} not found in response. The AI may not have followed the prompt correctly.');
             }
 
         } catch (error) {
@@ -353,6 +397,12 @@ Now, please process the following URL:`;
                 if (errorMessage.includes('ByteString') || errorMessage.includes('character at index') || errorMessage.includes('greater than 255')) {
                     console.warn(`🔤 Character encoding error for ${chapterUrl}, not retrying`);
                     throw new Error(`Character encoding error. This might be caused by special characters in the request. Original error: ${errorMessage}`);
+                }
+                
+                // Check for empty content or missing markers - don't retry as this likely means the chapter is blocked
+                if (errorMessage.includes('empty content') || errorMessage.includes('markers') || errorMessage.includes('inaccessible')) {
+                    console.warn(`🚫 Content access issue for ${chapterUrl}, not retrying`);
+                    throw new Error(`Chapter appears to be blocked or inaccessible. Original error: ${errorMessage}`);
                 }
                 
                 if (retries < maxRetries) {
@@ -634,17 +684,39 @@ Now, please process the following URL:`;
             {showFallbackInput && (
                 <div className="fallback-input-container">
                     <h3>Manual Text Input for Chapter {fallbackChapterNumber}</h3>
-                    <p>Translation failed for this chapter. Please paste the Japanese text below:</p>
+                    <p>Translation failed for this chapter. Please provide the text below:</p>
+                    
+                    <div className="fallback-type-selector">
+                        <label>
+                            <input
+                                type="radio"
+                                value="japanese"
+                                checked={fallbackType === 'japanese'}
+                                onChange={(e) => setFallbackType(e.target.value as 'japanese' | 'english')}
+                            />
+                            Japanese text (will be translated)
+                        </label>
+                        <label>
+                            <input
+                                type="radio"
+                                value="english"
+                                checked={fallbackType === 'english'}
+                                onChange={(e) => setFallbackType(e.target.value as 'japanese' | 'english')}
+                            />
+                            English text (already translated)
+                        </label>
+                    </div>
+                    
                     <textarea
                         className="fallback-textarea"
                         value={fallbackText}
                         onChange={(e) => setFallbackText(e.target.value)}
-                        placeholder="Paste Japanese text here..."
+                        placeholder={fallbackType === 'japanese' ? "Paste Japanese text here..." : "Paste English translation here..."}
                         rows={10}
                     />
                     <div className="fallback-buttons">
                         <button onClick={handleFallbackSubmit} disabled={!fallbackText.trim()}>
-                            Translate Text
+                            {fallbackType === 'japanese' ? 'Translate Text' : 'Add Text'}
                         </button>
                         <button onClick={() => setShowFallbackInput(false)} className="cancel-button">
                             Cancel
@@ -656,6 +728,41 @@ Now, please process the following URL:`;
             {translatedChapters.length > 0 && (
                 <div className="preview-text-container">
                     <h2>Translated Chapters</h2>
+                    
+                    {/* Table of Contents */}
+                    <div className="table-of-contents">
+                        <h3>Table of Contents</h3>
+                        <div className="chapter-list">
+                            {translatedChapters
+                                .sort((a, b) => a.chapterNumber - b.chapterNumber)
+                                .map(chapter => (
+                                    <div key={chapter.chapterNumber} className="chapter-item">
+                                        <div className="chapter-info">
+                                            <span className="chapter-title">Chapter {chapter.chapterNumber}</span>
+                                            <span className="chapter-length">
+                                                {chapter.translatedText.length.toLocaleString()} characters
+                                            </span>
+                                        </div>
+                                        <div className="chapter-actions">
+                                            <button 
+                                                className="view-button"
+                                                onClick={() => setSelectedChapter(chapter.chapterNumber)}
+                                            >
+                                                View
+                                            </button>
+                                            <button 
+                                                className="delete-button"
+                                                onClick={() => handleDeleteChapter(chapter.chapterNumber)}
+                                            >
+                                                Delete
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))
+                            }
+                        </div>
+                    </div>
+                    
                     <div className="chapter-selector">
                         <label htmlFor="chapterSelect">Select Chapter to View:</label>
                         <select 

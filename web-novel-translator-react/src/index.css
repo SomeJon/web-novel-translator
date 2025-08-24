@@ -274,6 +274,26 @@ h1 {
     cursor: not-allowed;
 }
 
+.fallback-type-selector {
+    margin-bottom: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.fallback-type-selector label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #856404;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.fallback-type-selector input[type="radio"] {
+    margin: 0;
+}
+
 .cancel-button {
     background-color: #6c757d !important;
     color: white !important;
@@ -349,6 +369,91 @@ h1 {
     background-color: #218838;
 }
 
+/* Table of Contents Styles */
+.table-of-contents {
+    margin-bottom: 30px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.table-of-contents h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #2c3e50;
+}
+
+.chapter-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.chapter-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    background-color: white;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.chapter-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.chapter-title {
+    font-weight: 600;
+    color: #2c3e50;
+    font-size: 1.05em;
+}
+
+.chapter-length {
+    font-size: 0.9em;
+    color: #6c757d;
+}
+
+.chapter-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.view-button {
+    background-color: #17a2b8;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+    font-weight: 600;
+    transition: background-color 0.3s ease;
+}
+
+.view-button:hover {
+    background-color: #138496;
+}
+
+.delete-button {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+    font-weight: 600;
+    transition: background-color 0.3s ease;
+}
+
+.delete-button:hover {
+    background-color: #c82333;
+}
+
 /* Responsive Adjustments */
 @media (min-width: 768px) {
     .button-group {
@@ -387,5 +492,15 @@ h1 {
     
     .edit-buttons {
         flex-direction: column;
+    }
+    
+    .chapter-item {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+    
+    .chapter-actions {
+        justify-content: center;
     }
 }
