@@ -193,8 +193,53 @@ Now, please process the following URL:`;
 
     // Convert plain text with line breaks to proper HTML for EPUB
     const convertTextToHTML = (text: string): string => {
-        // Split text into paragraphs (double line breaks indicate paragraph breaks)
-        const paragraphs = text.split('\n\n');
+        if (!text || text.trim() === '') {
+            return '<p>No content available.</p>';
+        }
+
+        // Normalize line breaks and split into paragraphs
+        const normalizedText = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+        
+        // Split by double line breaks for paragraphs, but also handle single line breaks
+        let paragraphs: string[] = [];
+        
+        // First try splitting by double line breaks
+        const doubleSplit = normalizedText.split('\n\n');
+        
+        if (doubleSplit.length > 1) {
+            // We have proper paragraph breaks
+            paragraphs = doubleSplit;
+        } else {
+            // No double breaks, split by single breaks and group logically
+            const singleSplit = normalizedText.split('\n');
+            let currentParagraph = '';
+            
+            for (const line of singleSplit) {
+                const trimmedLine = line.trim();
+                
+                if (trimmedLine === '') {
+                    if (currentParagraph.trim() !== '') {
+                        paragraphs.push(currentParagraph.trim());
+                        currentParagraph = '';
+                    }
+                } else if (trimmedLine === '***') {
+                    if (currentParagraph.trim() !== '') {
+                        paragraphs.push(currentParagraph.trim());
+                        currentParagraph = '';
+                    }
+                    paragraphs.push('***');
+                } else {
+                    if (currentParagraph !== '') {
+                        currentParagraph += '\n';
+                    }
+                    currentParagraph += line;
+                }
+            }
+            
+            if (currentParagraph.trim() !== '') {
+                paragraphs.push(currentParagraph.trim());
+            }
+        }
         
         let htmlContent = '';
         
@@ -203,7 +248,7 @@ Now, please process the following URL:`;
             
             // Handle scene breaks (*** on its own line)
             if (paragraph.trim() === '***') {
-                htmlContent += '<div style="text-align: center; margin: 1em 0; font-weight: bold;">***</div>\n';
+                htmlContent += '<div style="text-align: center; margin: 1.5em 0; font-weight: bold; font-size: 1.2em;">***</div>\n';
                 continue;
             }
             
@@ -213,11 +258,11 @@ Now, please process the following URL:`;
             // Convert *italics* to <em>italics</em>
             processedParagraph = processedParagraph.replace(/\*(.*?)\*/g, '<em>$1</em>');
             
-            // Handle single line breaks within paragraphs (preserve them as <br>)
-            processedParagraph = processedParagraph.replace(/\n/g, '<br>');
+            // Handle line breaks within paragraphs (preserve them as <br>)
+            processedParagraph = processedParagraph.replace(/\n/g, '<br>\n');
             
-            // Wrap in paragraph tags
-            htmlContent += `<p>${processedParagraph}</p>\n`;
+            // Wrap in paragraph tags with proper spacing
+            htmlContent += `<p style="margin: 0 0 1em 0; line-height: 1.6;">${processedParagraph}</p>\n`;
         }
         
         return htmlContent;
@@ -243,34 +288,52 @@ Now, please process the following URL:`;
             translatedChapters.sort((a, b) => a.chapterNumber - b.chapterNumber);
 
             for (const chapter of translatedChapters) {
-                const allLines = chapter.translatedText.split('\n');
-                const nonEmptyLines = allLines.filter(line => line.trim() !== '');
+                console.log(`Processing chapter ${chapter.chapterNumber} for EPUB...`);
+                
                 let title = `Chapter ${chapter.chapterNumber}`;
-                let content = chapter.translatedText;
+                let rawContent = chapter.translatedText;
 
-                if (nonEmptyLines.length > 0) {
-                    const firstLine = nonEmptyLines[0];
-                    const titleMatch = firstLine.match(/^(.*)\[chapter: \d+\]$/i);
+                // More robust chapter processing
+                const lines = chapter.translatedText.split('\n');
+                
+                // Find title line (should contain [chapter: X])
+                const titleLineIndex = lines.findIndex(line => /\[chapter:\s*\d+\]/i.test(line));
+                if (titleLineIndex >= 0) {
+                    const titleLine = lines[titleLineIndex];
+                    const titleMatch = titleLine.match(/^(.*?)\s*\[chapter:\s*\d+\]/i);
                     if (titleMatch && titleMatch[1]) {
                         title = titleMatch[1].trim();
-                        // Remove the title line and the URL line, but preserve line breaks
-                        const titleLineIndex = allLines.findIndex(line => line.trim() === firstLine.trim());
-                        const urlLineIndex = allLines.map((line, index) => line.trim().startsWith('https://') ? index : -1).filter(index => index !== -1).pop() ?? -1;
-                        if (titleLineIndex >= 0 && urlLineIndex >= 0) {
-                            const rawContent = allLines.slice(titleLineIndex + 1, urlLineIndex).join('\n').trim();
-                            content = convertTextToHTML(rawContent);
-                        }
-                    } else {
-                        // If no specific title format found, remove only the URL line
-                        const urlLineIndex = allLines.map((line, index) => line.trim().startsWith('https://') ? index : -1).filter(index => index !== -1).pop() ?? -1;
-                        if (urlLineIndex >= 0) {
-                            const rawContent = allLines.slice(0, urlLineIndex).join('\n').trim();
-                            content = convertTextToHTML(rawContent);
-                        }
                     }
                 }
 
-                epub.add(title, content);
+                // Find URL line (last line that starts with https://)
+                let urlLineIndex = -1;
+                for (let i = lines.length - 1; i >= 0; i--) {
+                    if (lines[i].trim().startsWith('https://')) {
+                        urlLineIndex = i;
+                        break;
+                    }
+                }
+
+                // Extract content between title and URL
+                if (titleLineIndex >= 0 && urlLineIndex >= 0) {
+                    rawContent = lines.slice(titleLineIndex + 1, urlLineIndex).join('\n');
+                } else if (titleLineIndex >= 0) {
+                    // No URL found, take everything after title
+                    rawContent = lines.slice(titleLineIndex + 1).join('\n');
+                } else if (urlLineIndex >= 0) {
+                    // No title found, take everything before URL
+                    rawContent = lines.slice(0, urlLineIndex).join('\n');
+                }
+
+                // Clean up the content and convert to HTML
+                rawContent = rawContent.trim();
+                console.log(`Raw content length for chapter ${chapter.chapterNumber}:`, rawContent.length);
+                
+                const htmlContent = convertTextToHTML(rawContent);
+                console.log(`HTML content length for chapter ${chapter.chapterNumber}:`, htmlContent.length);
+
+                epub.add(title, htmlContent);
             }
             
             const blob = await epub.generate('blob');
