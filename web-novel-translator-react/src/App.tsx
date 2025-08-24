@@ -302,8 +302,13 @@ Now, please process the following URL:`;
                     const titleLine = lines[titleLineIndex];
                     const titleMatch = titleLine.match(/^(.*?)\s*\[chapter:\s*\d+\]/i);
                     if (titleMatch && titleMatch[1]) {
-                        title = titleMatch[1].trim();
+                        const chapterTitle = titleMatch[1].trim();
+                        title = `${chapterTitle} - Chapter ${chapter.chapterNumber}`;
+                    } else {
+                        title = `Chapter ${chapter.chapterNumber}`;
                     }
+                } else {
+                    title = `Chapter ${chapter.chapterNumber}`;
                 }
 
                 // Find URL line (last line that starts with https://)
