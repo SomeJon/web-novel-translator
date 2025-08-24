@@ -7,6 +7,7 @@ import {
 
 function App() {
     const [geminiApiKey, setGeminiApiKey] = useState<string>('');
+    const [selectedModel, setSelectedModel] = useState<string>('gemini-2.0-flash-exp');
     const [site, setSite] = useState<string>('syosetu');
     const [seriesUrl, setSeriesUrl] = useState<string>('');
     const [startChapter, setStartChapter] = useState<number>(1);
@@ -78,7 +79,7 @@ function App() {
     };
 
     // Independent translation function that creates a completely fresh AI instance for each chapter
-    const translateSingleChapter = async (apiKey: string, chapterUrl: string): Promise<string> => {
+    const translateSingleChapter = async (apiKey: string, chapterUrl: string, model: string): Promise<string> => {
         // Create a completely fresh AI instance for this chapter only
         let ai: any = null;
         let response: any = null;
@@ -129,6 +130,16 @@ Your final output must be completely clean prose. It is absolutely forbidden to 
 
 **REMEMBER: Start your response immediately with the chapter title. No explanations, no process descriptions, no thinking out loud.**
 
+**OUTPUT FORMAT MARKERS:**
+You MUST start your response with exactly "<start>" followed by a newline, then provide your translation, and end with a newline followed by exactly "<end>".
+
+Example:
+<start>
+Chapter Title [chapter: X]
+[translated content here]
+[source URL]
+<end>
+
 Now, please process the following URL:`;
 
             const config = {
@@ -145,7 +156,7 @@ Now, please process the following URL:`;
 
             // Make the API call with completely fresh instance
             response = await ai.models.generateContentStream({
-                model: 'gemini-2.5-flash',
+                model: model,
                 config,
                 contents,
             });
@@ -161,7 +172,21 @@ Now, please process the following URL:`;
 
             console.log(`✅ Translation completed for ${chapterUrl}. Length: ${fullText.length}`);
             
-            return fullText;
+            // Extract text between <start> and <end> markers
+            const startMarker = '<start>';
+            const endMarker = '<end>';
+            
+            const startIndex = fullText.indexOf(startMarker);
+            const endIndex = fullText.lastIndexOf(endMarker);
+            
+            if (startIndex !== -1 && endIndex !== -1 && endIndex > startIndex) {
+                const extractedText = fullText.substring(startIndex + startMarker.length, endIndex).trim();
+                console.log(`📝 Extracted text between markers. Length: ${extractedText.length}`);
+                return extractedText;
+            } else {
+                console.warn(`⚠️ Start/end markers not found, returning full text`);
+                return fullText;
+            }
 
         } catch (error) {
             console.error(`❌ Fresh translation failed for ${chapterUrl}:`, error);
@@ -182,7 +207,7 @@ Now, please process the following URL:`;
         while (retries < maxRetries) {
             try {
                 // Each attempt creates a completely independent AI instance
-                return await translateSingleChapter(apiKey, chapterUrl);
+                return await translateSingleChapter(apiKey, chapterUrl, selectedModel);
             } catch (error) {
                 console.error(`🔄 Attempt ${retries + 1} failed for ${chapterUrl}:`, error);
                 retries++;
@@ -377,6 +402,21 @@ Now, please process the following URL:`;
                     value={geminiApiKey}
                     onChange={(e) => setGeminiApiKey(e.target.value)}
                 />
+            </div>
+
+            <div className="input-group">
+                <label htmlFor="modelSelect">Gemini Model:</label>
+                <select 
+                    id="modelSelect" 
+                    value={selectedModel}
+                    onChange={(e) => setSelectedModel(e.target.value)}
+                >
+                    <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash (Experimental)</option>
+                    <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+                    <option value="gemini-1.5-flash-8b">Gemini 1.5 Flash 8B</option>
+                    <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                    <option value="gemini-2.0-flash-thinking-exp">Gemini 2.0 Flash Thinking (Experimental)</option>
+                </select>
             </div>
 
             <div className="input-group">
