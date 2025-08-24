@@ -7,7 +7,7 @@ import {
 
 function App() {
     const [geminiApiKey, setGeminiApiKey] = useState<string>('');
-    const [selectedModel, setSelectedModel] = useState<string>('gemini-2.0-flash-exp');
+    const [selectedModel, setSelectedModel] = useState<string>('gemini-2.5-flash');
     const [site, setSite] = useState<string>('syosetu');
     const [seriesUrl, setSeriesUrl] = useState<string>('');
     const [startChapter, setStartChapter] = useState<number>(1);
@@ -411,11 +411,8 @@ Now, please process the following URL:`;
                     value={selectedModel}
                     onChange={(e) => setSelectedModel(e.target.value)}
                 >
-                    <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash (Experimental)</option>
-                    <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
-                    <option value="gemini-1.5-flash-8b">Gemini 1.5 Flash 8B</option>
-                    <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
-                    <option value="gemini-2.0-flash-thinking-exp">Gemini 2.0 Flash Thinking (Experimental)</option>
+                    <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                    <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
                 </select>
             </div>
 
