@@ -553,3 +553,333 @@ h1 {
         justify-content: center;
     }
 }
+
+/* Glossary styles */
+.glossary-container {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    margin-bottom: 2rem;
+}
+
+.glossary-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.glossary-header h2 {
+    margin: 0;
+    color: #333;
+    font-size: 1.5rem;
+}
+
+.generate-glossary-button {
+    background: #28a745;
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.generate-glossary-button:hover:not(:disabled) {
+    background: #218838;
+    transform: translateY(-2px);
+}
+
+.generate-glossary-button:disabled {
+    background: #6c757d;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.glossary-info {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0.5rem;
+}
+
+.glossary-info p {
+    margin: 0;
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.characters-section {
+    margin-top: 1rem;
+}
+
+.characters-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.characters-header h3 {
+    margin: 0;
+    color: #333;
+}
+
+.add-character-button {
+    background: #007bff;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.add-character-button:hover {
+    background: #0056b3;
+    transform: translateY(-1px);
+}
+
+.characters-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.character-item {
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 1rem;
+    background: #fafafa;
+}
+
+.character-display .character-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.75rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.character-names h4 {
+    margin: 0;
+    color: #333;
+    font-size: 1.1rem;
+}
+
+.japanese-name {
+    color: #666;
+    font-size: 0.9rem;
+    font-weight: normal;
+    margin-left: 0.5rem;
+}
+
+.character-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.importance-badge {
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.age-badge {
+    background: #6c757d;
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+}
+
+.occurrence-badge {
+    background: #17a2b8;
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: bold;
+}
+
+.stop-button {
+    background: #fd7e14 !important;
+    color: white !important;
+    border: none !important;
+    padding: 12px 24px !important;
+    border-radius: 8px !important;
+    font-size: 1.1em !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+}
+
+.stop-button:hover {
+    background: #e8590c !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 8px 25px rgba(253, 126, 20, 0.3) !important;
+}
+
+.physical-appearance {
+    margin: 0.5rem 0;
+    color: #555;
+    font-size: 0.9rem;
+    font-style: italic;
+}
+
+.character-description {
+    margin: 0.5rem 0;
+    color: #333;
+    line-height: 1.4;
+}
+
+.character-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    flex-wrap: wrap;
+}
+
+.edit-character-button {
+    background: #ffc107;
+    color: #212529;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.edit-character-button:hover {
+    background: #e0a800;
+    transform: translateY(-1px);
+}
+
+.delete-character-button {
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.delete-character-button:hover {
+    background: #c82333;
+    transform: translateY(-1px);
+}
+
+.character-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.add-character-form {
+    border: 2px dashed #007bff;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    background: #f8f9ff;
+}
+
+.add-character-form h4 {
+    margin: 0 0 1rem 0;
+    color: #007bff;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.character-form input,
+.character-form select,
+.character-form textarea {
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    transition: border-color 0.3s ease;
+}
+
+.character-form input:focus,
+.character-form select:focus,
+.character-form textarea:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.form-buttons {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+}
+
+.save-button {
+    background: #28a745;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.save-button:hover {
+    background: #218838;
+    transform: translateY(-1px);
+}
+
+.cancel-button {
+    background: #6c757d;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.cancel-button:hover {
+    background: #5a6268;
+    transform: translateY(-1px);
+}
+
+.no-glossary {
+    text-align: center;
+    padding: 2rem;
+    color: #666;
+    font-style: italic;
+}
