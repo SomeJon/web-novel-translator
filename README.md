@@ -1,152 +1,118 @@
-# Web Novel Translator
+# 🌸 Web Novel Translator
 
-🌐 **Live App:** [https://SomeJon.github.io/web-novel-translator](https://SomeJon.github.io/web-novel-translator)
+A React-based web application for translating Japanese web novels into English EPUBs using Google's Gemini AI.
 
-A modern web application that translates Japanese web novels from [ncode.syosetu.com](https://ncode.syosetu.com/) into English and generates downloadable EPUB files using Google's Gemini AI.
+## ⚠️ **IMPORTANT DISCLAIMER**
 
-## ✨ Features
+This tool is **ONLY** intended for translating web novels that:
+- Have had their official light novel series **axed/discontinued** 
+- Are **NOT officially licensed** in English
+- Are freely available on public web novel platforms
 
-- 🤖 **AI-Powered Translation** - Uses Google Gemini 2.5 Flash for high-quality translations
-- 📚 **EPUB Generation** - Creates properly formatted ebooks with chapters and line breaks
-- 🔄 **Fresh AI Instances** - Each chapter gets a completely independent AI instance to prevent cross-contamination
-- 📖 **Chapter Preview** - View any translated chapter before downloading
-- 📱 **Responsive Design** - Works seamlessly on desktop and mobile devices
-- 🎯 **Progress Tracking** - Visual progress bar and status updates
-- 🔒 **Secure** - API keys are never stored or saved
-- ⚡ **Rate Limiting** - Built-in delays to respect API limits
-- 🔁 **Error Recovery** - Automatic retry logic for failed translations
+### Why I Created This
+
+I was 3 volumes deep into "The Villainess Finally Enters Senior High" when the light novel series got axed. I desperately wanted to know what happens next! The web novel was freely available online, so I created this tool to translate it for my personal reading.
+
+**I am not responsible for how you use this tool.** Please respect copyright laws and only use this for personal reading of unlicensed content. If a series gets officially licensed, please support the official release!
+
+## 🌐 Supported Sites
+
+Currently supports **only one site** (I honestly grabbed the first Japanese web novel site I found and hoped it wasn't a piracy site 😅). 
+
+More sites may be added in the future if there's demand and they host legitimate, freely available content.
+
+## 🔒 Privacy & Availability
+
+- This tool is currently **publicly available**
+- If you have concerns about usage or need it taken private, **feel free to contact me** - I'm happy to discuss and accommodate reasonable requests
+- All translation happens through your own Google Gemini API key
 
 ## 🚀 How to Use
 
-1. **Visit the App** - Go to [https://SomeJon.github.io/web-novel-translator](https://SomeJon.github.io/web-novel-translator)
-
-2. **Enter Your Gemini API Key** - Get one from [Google AI Studio](https://aistudio.google.com/app/apikey)
-
-3. **Provide Series URL** - Paste a Syosetu novel URL (e.g., `https://ncode.syosetu.com/n5547eo`)
-
-4. **Configure Translation**:
-   - Starting chapter number
-   - Number of chapters to translate
-   - Output EPUB filename
-
-5. **Translate** - Click "Translate" and watch the progress
-
-6. **Preview Chapters** - Use the dropdown to view any translated chapter
-
-7. **Download EPUB** - Click "Download EPUB" when ready
-
-## 🎯 Supported Sites
-
-Currently supports:
-- **ncode.syosetu.com** - Japan's largest web novel platform
-
-## 🔧 Technical Features
-
-### Translation Quality
-- **Context-Aware Translation** - Uses URL context for consistent character names and terminology
-- **Proper Formatting** - Maintains dialogue structure, italics for thoughts, and scene breaks
-- **Clean Output** - Removes citations, footnotes, and extraneous content
-
-### EPUB Generation
-- **HTML Formatting** - Converts text to proper HTML with paragraph breaks
-- **Chapter Organization** - Automatically extracts titles and organizes content
-- **Reader-Friendly** - Optimized spacing and typography for ebook readers
-
-### Technical Architecture
-- **React + TypeScript** - Modern frontend framework with type safety
-- **Vite** - Fast build tool and development server
-- **Fresh AI Instances** - Each chapter translation uses an independent AI instance
-- **Client-Side Processing** - No server required, runs entirely in the browser
-
-## 🛠️ Development
-
 ### Prerequisites
-- Node.js 20.19+ or 22.12+
-- npm or yarn
+1. Get a free **Google Gemini API key** from [Google AI Studio](https://makersuite.google.com/app/apikey)
+2. Find a Japanese web novel URL from the supported site
 
-### Setup
+### Basic Steps
+1. **Enter your Gemini API key** (stored locally in your browser)
+2. **Paste the series URL** (should auto-detect series name)
+3. **Set chapter range** (start chapter and number of chapters to translate)
+4. **Click "Start Translation"** and wait for the magic ✨
+
+## ✨ Features
+
+### 📚 **Smart Glossary System**
+- **Progressive Character Analysis**: Generates character glossaries in 10-chapter segments
+- **Context Building**: Each segment uses previous segments as context to track character development
+- **Character Details**: Tracks names, ages, relationships, importance levels, and occurrence counts
+- **Editable**: Add, edit, or delete characters and entire segments
+- **Translation Integration**: Automatically includes glossary context in chapter translations
+
+### 📖 **Professional EPUB Generation**
+- **Beautiful Title Page**: Clean design with series info and chapter count
+- **Table of Contents**: Organized by chapter groups with clickable links
+- **Navigation**: Each chapter includes "Back to Contents" and "Glossary" buttons
+- **Character Glossary**: Included at the end of the EPUB for reference
+
+### 🛑 **Translation Controls**
+- **Stop Mid-Translation**: Halt translation process while keeping completed chapters
+- **Progress Tracking**: Real-time progress updates and status messages
+- **Error Handling**: Robust retry mechanisms for API rate limits
+- **Chapter Preview**: Review translations before downloading
+
+## 📋 Recommended Usage Workflow
+
+1. **🎯 Set Up Your Range**
+   - Choose a reasonable chapter range (10-50 chapters work well)
+   - Set your glossary range (same or broader than translation range)
+
+2. **📚 Generate Glossary First**
+   - Click "Generate Glossary" and wait for all segments to complete
+   - Review and edit character information as needed
+   - Delete any unwanted segments to clean up context
+
+3. **🚀 Translate Chapters**
+   - Click "Start Translation" with your glossary ready
+   - Monitor progress and use "Stop Translation" if needed
+   - Each chapter will include glossary context for better consistency
+
+4. **✏️ Review & Edit**
+   - Use the chapter preview to review translations
+   - Edit any chapters that need improvement
+   - Check character names are consistent throughout
+
+5. **📖 Download & Enjoy**
+   - Click "Download EPUB" to get your finished book
+   - Open in your favorite e-reader (Calibre, Apple Books, etc.)
+   - Enjoy reading the continuation of your favorite series! 🎉
+
+## 🤖 Technical Notes
+
+**Full Transparency**: This entire application was created using AI assistance (Claude + Cursor). I'm not hiding that fact - it's AI-generated code through and through. The tool works, but keep that in mind regarding code quality and potential quirks.
+
+### Architecture
+- **Frontend**: React + TypeScript + Vite
+- **AI Service**: Google Gemini API with `urlContext` for web scraping
+- **EPUB Generation**: Custom implementation using JSZip
+- **Storage**: Local browser storage (nothing sent to external servers except Gemini API)
+
+### Models Supported
+- `gemini-1.5-flash` (recommended - faster, cheaper)
+- `gemini-1.5-pro` (slower but potentially higher quality)
+- `gemini-2.5-pro` (experimental, has strict rate limits)
+
+## ⚙️ Development
+
 ```bash
-# Clone the repository
-git clone https://github.com/SomeJon/web-novel-translator.git
-
-# Navigate to the React app
-cd web-novel-translator/web-novel-translator-react
-
-# Install dependencies
+cd web-novel-translator-react
 npm install
-
-# Start development server
 npm run dev
 ```
 
-### Build and Deploy
-```bash
-# Build for production
-npm run build
+## 📝 License
 
-# Deploy to GitHub Pages
-npm run deploy
-```
+MIT License - Use responsibly and respect copyright laws.
 
-## 📦 Dependencies
+---
 
-### Core
-- **React 19** - UI framework
-- **TypeScript** - Type safety
-- **@google/genai** - Gemini AI integration
-- **jEpub** - EPUB generation
-
-### Development
-- **Vite** - Build tool
-- **ESLint** - Code linting
-- **gh-pages** - GitHub Pages deployment
-
-## 🎨 UI Features
-
-- **Modern Design** - Clean, professional interface
-- **Progress Visualization** - Real-time progress bar and status updates
-- **Chapter Management** - Dropdown selector for viewing translated chapters
-- **Responsive Layout** - Adapts to different screen sizes
-- **Error Handling** - Clear error messages and retry mechanisms
-
-## 🔒 Privacy & Security
-
-- **No Data Storage** - API keys and translations are never saved
-- **Client-Side Only** - All processing happens in your browser
-- **No Server** - Direct API calls to Google Gemini
-- **Fresh Sessions** - Each chapter translation starts with a clean AI instance
-
-## 📚 Translation Quality
-
-The app uses a carefully crafted prompt that ensures:
-- **Consistent Character Names** - Maintains character name consistency across chapters
-- **Proper Dialogue Formatting** - Double quotes for speech, italics for thoughts
-- **Scene Break Handling** - Converts Japanese scene breaks to standard `***` format
-- **Clean Prose** - Removes web page artifacts and maintains book-like formatting
-- **Double-Spaced Paragraphs** - Follows proper novel formatting conventions
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit issues or pull requests.
-
-### Potential Improvements
-- Support for additional web novel sites
-- Multiple output formats (PDF, TXT)
-- Translation memory/glossary features
-- Batch processing of multiple series
-- Custom formatting options
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## ⚠️ Disclaimer
-
-This tool is for personal use only. Please respect copyright laws and the terms of service of the websites you're translating from. Always check if translation and distribution are permitted by the original authors.
-
-## 🙏 Acknowledgments
-
-- **Google Gemini** - For providing excellent AI translation capabilities
-- **Syosetu** - For hosting amazing web novels
-- **React Community** - For the excellent development framework
-- **jEpub Library** - For client-side EPUB generation
+**Remember**: This tool is for personal use with unlicensed content only. Support official releases when available! 💙

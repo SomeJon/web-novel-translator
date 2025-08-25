@@ -28,91 +28,15 @@ You must NOT show any thinking process, analysis, or reasoning. Your response mu
    - Skip background characters unless they have speaking roles
 
 4. **Description Rules:**
-   - **major**: 2-3 sentences maximum describing role and key traits
-   - **minor**: 1 sentence maximum describing basic role
-   - **background**: Skip entirely unless they speak or affect plot
-
-5. **KEEP IT CONCISE:** This glossary will be used for translation consistency, not comprehensive character analysis
-
-**OUTPUT FORMAT:**
-You MUST respond with ONLY a valid JSON object in this exact format:
-
-\`\`\`json
-{
-  "characters": [
-    {
-      "japaneseName": "悪役令嬢",
-      "englishName": "Villainess",
-      "description": "The reincarnated protagonist trying to avoid her bad ending. She's intelligent and uses modern knowledge strategically.",
-      "importance": "major"
-    },
-    {
-      "japaneseName": "王子",
-      "englishName": "Prince",
-      "description": "The kingdom's crown prince.",
-      "importance": "minor"
-    }
-  ]
-}
-\`\`\`
-
-**CRITICAL RULES:**
-- Use consistent English name romanization suitable for translation
-- Major characters: Include all available details from Japanese text
-- Minor characters: Include basic info and brief description
-- Background characters: Name and minimal description only
-- NO explanatory text outside the JSON
-- NO markdown formatting except for the json code block
-- Ensure PERFECTLY VALID JSON syntax - no trailing commas, proper quotes
-- All strings must be properly escaped and quoted
-- Focus on characters that will appear in translation
-
-Now analyze these original Japanese chapter URLs and create a CONCISE glossary focusing only on the most important characters:`;
-};
-
-/**
- * Generate merge glossary prompt for updating existing glossary with new chapters
- */
-export const generateMergeGlossaryPrompt = (
-    seriesName: string, 
-    chapterRange: { start: number; end: number },
-    existingGlossary: Glossary
-): string => {
-    // Only pass essential info to avoid hitting context limits
-    const existingCharacters = existingGlossary.characters.slice(0, 20).map(char => ({
-        japaneseName: char.japaneseName,
-        englishName: char.englishName,
-        importance: char.importance,
-        occurrenceCount: char.occurrenceCount
-        // Skip description to save context space
-    }));
-
-    return `You are an expert character analyst. Update an existing glossary for "${seriesName}" by analyzing chapters ${chapterRange.start}-${chapterRange.end}.
-
-**ABSOLUTELY CRITICAL: NO THINKING OR REASONING**
-You must NOT show any thinking process. Your response must contain ONLY the final JSON glossary.
-
-**EXISTING CHARACTERS (keep these names exactly):**
-${JSON.stringify({ characters: existingCharacters }, null, 2)}
-
-**MERGE RULES:**
-
-1. **Existing Characters:** If they appear in new chapters:
-   - Keep EXACT same englishName (critical for consistency)
-   - Increase occurrenceCount by +1
-   - Update description ONLY if major new info (keep it brief)
-
-2. **New Characters:** Only add if they're important:
-   - Major: 5-8 most important only (2-3 sentences max)
-   - Minor: Secondary with dialogue (1 sentence max)
-   - Skip background characters
-
-3. **KEEP IT CONCISE:**
    - Major characters: 2-3 sentences maximum
    - Minor characters: 1 sentence maximum
-   - Focus on translation-relevant characters only
+   - Focus on role/relationship to protagonist, NOT detailed backstories
+   - Use simple, clear English suitable for translation context
 
-4. **Total Limit:** Final glossary should have ~15-25 characters maximum
+5. **Character Importance Guidelines:**
+   - Major: Protagonist, main love interests, primary antagonists, key family members
+   - Minor: Secondary friends, classmates, teachers, recurring side characters
+   - Background: One-time appearances, crowd members, unnamed characters (SKIP THESE)
 
 **OUTPUT FORMAT:**
 You MUST respond with ONLY a valid JSON object in this exact format:
@@ -121,17 +45,10 @@ You MUST respond with ONLY a valid JSON object in this exact format:
 {
   "characters": [
     {
-      "japaneseName": "existing_japanese_name",
-      "englishName": "Existing Name", 
-      "description": "Brief updated description", 
+      "japaneseName": "主人公",
+      "englishName": "Protagonist",
+      "description": "The main character of the story",
       "importance": "major",
-      "occurrenceCount": 3
-    },
-    {
-      "japaneseName": "new_japanese_name",
-      "englishName": "New Character",
-      "description": "Brief description",
-      "importance": "minor", 
       "occurrenceCount": 1
     }
   ]
@@ -139,26 +56,26 @@ You MUST respond with ONLY a valid JSON object in this exact format:
 \`\`\`
 
 **CRITICAL JSON RULES:**
-- Ensure PERFECTLY VALID JSON syntax - no trailing commas, proper quotes  
+- Ensure PERFECTLY VALID JSON syntax - no trailing commas, proper quotes
 - All strings must be properly escaped and quoted
 - NO explanatory text outside the JSON code block
 
-Now analyze these new chapters and merge with existing glossary. Keep it CONCISE - this could be the final batch:`;
+Now analyze the provided chapters and create the character glossary:`;
 };
 
 /**
- * Generate progressive segment prompt for character analysis with previous segments context
+ * Generate segment-specific prompt with previous context
  */
 export const generateSegmentPrompt = (
-    seriesName: string, 
+    seriesName: string,
     segmentRange: { start: number; end: number },
     segmentNumber: number,
     previousSegments: GlossarySegment[] = []
 ): string => {
     let contextSection = '';
-    
+
     if (previousSegments.length > 0) {
-        const allPreviousCharacters = previousSegments.flatMap(segment => 
+        const allPreviousCharacters = previousSegments.flatMap(segment =>
             segment.characters.map(char => ({
                 japaneseName: char.japaneseName,
                 englishName: char.englishName,
@@ -167,7 +84,7 @@ export const generateSegmentPrompt = (
                 segmentLastSeen: segment.segmentNumber
             }))
         );
-        
+
         contextSection = `
 
 **PREVIOUS SEGMENTS CONTEXT:**
@@ -232,7 +149,7 @@ You MUST respond with ONLY a valid JSON object in this exact format:
     },
     {
       "japaneseName": "新キャラ",
-      "englishName": "New Character", 
+      "englishName": "New Character",
       "age": "16",
       "gender": "male",
       "description": "Transfer student",
@@ -244,7 +161,7 @@ You MUST respond with ONLY a valid JSON object in this exact format:
 \`\`\`
 
 **CRITICAL JSON RULES:**
-- Ensure PERFECTLY VALID JSON syntax - no trailing commas, proper quotes  
+- Ensure PERFECTLY VALID JSON syntax - no trailing commas, proper quotes
 - All strings must be properly escaped and quoted
 - NO explanatory text outside the JSON code block
 
@@ -252,7 +169,7 @@ Now analyze chapters ${segmentRange.start}-${segmentRange.end} and create this s
 };
 
 /**
- * Parse glossary response from Gemini API
+ * Parse glossary response from AI with robust error handling
  */
 export const parseGlossaryResponse = (
     response: string,
@@ -260,14 +177,14 @@ export const parseGlossaryResponse = (
     chapterRange: { start: number; end: number }
 ): Glossary | null => {
     let jsonText = ''; // Declare outside try block for error logging
-    
+
     try {
         console.log(`🔍 Raw response length: ${response.length}`);
         console.log(`🔍 Raw response preview: "${response.substring(0, 500)}..."`);
-        
+
         // Extract JSON from response (handle code blocks)
         jsonText = response.trim();
-        
+
         // Remove markdown code blocks if present
         const jsonMatch = jsonText.match(/```json\s*([\s\S]*?)\s*```/);
         if (jsonMatch) {
@@ -279,8 +196,8 @@ export const parseGlossaryResponse = (
                 jsonText = codeBlockMatch[1].trim();
             }
         }
-        
-                    // Clean up common JSON issues and mixed language problems
+
+        // Clean up common JSON issues and mixed language problems
         jsonText = jsonText
             .replace(/^\s*[^{]*/, '') // Remove any text before opening brace
             .replace(/}\s*[^}]*$/, '}') // Remove any text after final closing brace
@@ -295,38 +212,50 @@ export const parseGlossaryResponse = (
             .replace(/:\s*([^",{}\[\]]+?)(\s*[,}])/g, ': "$1"$2') // Quote unquoted values
             .replace(/"\s*([^"]*?)\s*"/g, '"$1"') // Clean up quoted strings
             .replace(/""\s*""/g, '""'); // Fix double quotes
-        
+
         console.log(`🔧 Cleaned JSON preview: "${jsonText.substring(0, 300)}..."`);
-        
+
         // Parse JSON
         const parsed = JSON.parse(jsonText);
-        
+
         if (!parsed.characters || !Array.isArray(parsed.characters)) {
             console.error('Invalid glossary format: missing characters array');
             return null;
         }
-        
+
         // Transform and validate characters
-        const characters: Character[] = parsed.characters.map((char: any, index: number) => {
-            const now = Date.now();
-            return {
-                id: `char-${index}-${now}`, // Generate unique ID
-                japaneseName: char.japaneseName || '',
-                englishName: char.englishName || char.japaneseName || `Character ${index + 1}`,
-                age: char.age || undefined,
-                gender: char.gender || undefined,
-                height: char.height || undefined,
-                physicalAppearance: char.physicalAppearance || undefined,
-                description: char.description || 'No description available.',
-                importance: ['major', 'minor', 'background'].includes(char.importance) 
-                    ? char.importance 
-                    : 'minor',
-                firstAppearance: chapterRange.start, // Default to start of range
-                occurrenceCount: char.occurrenceCount || 1, // Default to 1 if not specified
-                lastModified: now
-            };
-        });
-        
+        const characters: Character[] = parsed.characters
+            .filter((char: any) => char && (char.japaneseName || char.englishName)) // Filter out invalid entries
+            .map((char: any, index: number) => {
+                const now = Date.now();
+                // Clean description of any Japanese characters
+                let cleanDescription = (char.description || 'No description available.')
+                    .replace(/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/g, '') // Remove Japanese characters
+                    .replace(/\s+/g, ' ') // Normalize spaces
+                    .trim();
+
+                if (!cleanDescription || cleanDescription.length < 5) {
+                    cleanDescription = 'Character description unavailable.';
+                }
+
+                return {
+                    id: `char-${index}-${now}`, // Generate unique ID
+                    japaneseName: char.japaneseName || '',
+                    englishName: char.englishName || char.japaneseName || `Character ${index + 1}`,
+                    age: char.age || undefined,
+                    gender: char.gender || undefined,
+                    height: char.height || undefined,
+                    physicalAppearance: char.physicalAppearance || undefined,
+                    description: cleanDescription,
+                    importance: ['major', 'minor', 'background'].includes(char.importance)
+                        ? char.importance
+                        : 'minor',
+                    firstAppearance: chapterRange.start, // Default to start of range
+                    occurrenceCount: char.occurrenceCount || 1, // Default to 1 if not specified
+                    lastModified: now
+                };
+            });
+
         const now = Date.now();
         return {
             characters,
@@ -336,21 +265,21 @@ export const parseGlossaryResponse = (
             generatedAt: now,
             lastModified: now
         };
-        
+
     } catch (error: any) {
         console.error('❌ Error parsing glossary response:', error);
         console.error('🔍 Failed JSON text preview:', jsonText?.substring(0, 500) + '...');
-        
+
         // Try alternative parsing approaches
         try {
             console.log('🔧 Attempting fallback parsing strategies...');
-            
+
             // Strategy 1: Extract and clean characters array only
             const charactersMatch = response.match(/"characters"\s*:\s*\[([\s\S]*?)(?:\]|\}\s*$)/);
             if (charactersMatch) {
                 console.log('🔧 Found characters array, attempting to parse...');
                 let charactersContent = charactersMatch[1];
-                
+
                 // Clean up the characters array content
                 charactersContent = charactersContent
                     .replace(/,\s*$/, '') // Remove trailing comma
@@ -361,46 +290,46 @@ export const parseGlossaryResponse = (
                     .replace(/([^"])\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":') // Quote unquoted keys
                     .replace(/:\s*([^",{}\[\]]+?)(\s*[,}])/g, ': "$1"$2') // Quote unquoted values
                     .replace(/""\s*""/g, '""'); // Fix double quotes
-                
+
                 const charactersJson = `{"characters":[${charactersContent}]}`;
                 console.log('🔧 Cleaned characters JSON preview:', charactersJson.substring(0, 300) + '...');
-                
+
                 const parsed = JSON.parse(charactersJson);
-                
+
                 if (parsed.characters && Array.isArray(parsed.characters)) {
                     console.log('✅ Successfully parsed characters array as fallback');
                     const characters: Character[] = parsed.characters
                         .filter((char: any) => char && (char.japaneseName || char.englishName)) // Filter out invalid entries
                         .map((char: any, index: number) => {
-                                                const now = Date.now();
-                        // Clean description of any Japanese characters
-                        let cleanDescription = (char.description || 'No description available.')
-                            .replace(/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/g, '') // Remove Japanese characters
-                            .replace(/\s+/g, ' ') // Normalize spaces
-                            .trim();
-                        
-                        if (!cleanDescription || cleanDescription.length < 5) {
-                            cleanDescription = 'Character description unavailable.';
-                        }
+                            const now = Date.now();
+                            // Clean description of any Japanese characters
+                            let cleanDescription = (char.description || 'No description available.')
+                                .replace(/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/g, '') // Remove Japanese characters
+                                .replace(/\s+/g, ' ') // Normalize spaces
+                                .trim();
 
-                        return {
-                            id: `char-${index}-${now}`,
-                            japaneseName: char.japaneseName || '',
-                            englishName: char.englishName || char.japaneseName || `Character ${index + 1}`,
-                            age: char.age || undefined,
-                            gender: char.gender || undefined,
-                            height: char.height || undefined,
-                            physicalAppearance: char.physicalAppearance || undefined,
-                            description: cleanDescription,
-                            importance: ['major', 'minor', 'background'].includes(char.importance)
-                                ? char.importance
-                                : 'minor',
-                            firstAppearance: chapterRange.start,
-                            occurrenceCount: char.occurrenceCount || 1,
-                            lastModified: now
-                        };
-                    });
-                    
+                            if (!cleanDescription || cleanDescription.length < 5) {
+                                cleanDescription = 'Character description unavailable.';
+                            }
+
+                            return {
+                                id: `char-${index}-${now}`,
+                                japaneseName: char.japaneseName || '',
+                                englishName: char.englishName || char.japaneseName || `Character ${index + 1}`,
+                                age: char.age || undefined,
+                                gender: char.gender || undefined,
+                                height: char.height || undefined,
+                                physicalAppearance: char.physicalAppearance || undefined,
+                                description: cleanDescription,
+                                importance: ['major', 'minor', 'background'].includes(char.importance)
+                                    ? char.importance
+                                    : 'minor',
+                                firstAppearance: chapterRange.start,
+                                occurrenceCount: char.occurrenceCount || 1,
+                                lastModified: now
+                            };
+                        });
+
                     const now = Date.now();
                     return {
                         characters,
@@ -415,13 +344,95 @@ export const parseGlossaryResponse = (
         } catch (fallbackError) {
             console.error('❌ Fallback parsing also failed:', fallbackError);
         }
-        
+
         return null;
     }
 };
 
 /**
- * Generate progressive glossary segments from chapter URLs
+ * Generate glossary using Gemini API with urlContext
+ */
+export const generateGlossary = async (options: GlossaryGenerationOptions): Promise<GlossaryGenerationResult> => {
+    const { apiKey, model, seriesName, chapterUrls, chapterRange } = options;
+
+    console.log(`🔄 Starting glossary generation for ${seriesName} (${chapterUrls.length} chapters)`);
+
+    try {
+        const ai = new GoogleGenAI({ apiKey });
+
+        // Generate the system prompt
+        const systemPrompt = generateGlossaryPrompt(seriesName, chapterRange);
+
+        // Prepare the message with all chapter URLs
+        const urlList = chapterUrls.map((url, index) =>
+            `Chapter ${chapterRange.start + index}: ${url}`
+        ).join('\n');
+
+        const userMessage = `Please analyze these chapters and generate a character glossary:\n\n${urlList}`;
+
+        const config = {
+            tools: [{ urlContext: {} }],
+            systemInstruction: [{ text: systemPrompt }],
+        };
+
+        const contents = [{
+            role: 'user',
+            parts: [{ text: userMessage }],
+        }];
+
+        console.log(`📤 Sending glossary request with ${chapterUrls.length} chapter URLs`);
+
+        const response = await ai.models.generateContentStream({
+            model: model,
+            config,
+            contents,
+        });
+
+        // Extract text from response
+        let fullText = '';
+        for await (const chunk of response) {
+            if (chunk.candidates && chunk.candidates[0] && chunk.candidates[0].content && chunk.candidates[0].content.parts) {
+                const chunkText = chunk.candidates[0].content.parts.map((part: any) => part.text).join('');
+                fullText += chunkText;
+            }
+        }
+
+        console.log(`✅ Glossary generation completed. Response length: ${fullText.length}`);
+
+        if (!fullText || fullText.trim().length === 0) {
+            return {
+                success: false,
+                error: 'Empty response from AI'
+            };
+        }
+
+        // Parse the response
+        const glossary = parseGlossaryResponse(fullText, seriesName, chapterRange);
+
+        if (glossary) {
+            console.log(`📚 Generated glossary with ${glossary.characters.length} characters`);
+            return {
+                success: true,
+                glossary
+            };
+        } else {
+            return {
+                success: false,
+                error: 'Failed to parse glossary response'
+            };
+        }
+
+    } catch (error: any) {
+        console.error('❌ Glossary generation failed:', error);
+        return {
+            success: false,
+            error: error.message || 'Unknown error occurred'
+        };
+    }
+};
+
+/**
+ * Generate glossary segments with progressive context building
  */
 export const generateGlossarySegments = async (
     options: GlossaryGenerationOptions
@@ -430,53 +441,53 @@ export const generateGlossarySegments = async (
     const segmentSize = 10; // 10 chapters per segment
     const totalChapters = chapterUrls.length;
     const totalSegments = Math.ceil(totalChapters / segmentSize);
-    
+
     console.log(`🔄 Generating ${totalSegments} glossary segments for ${seriesName} (${segmentSize} chapters each)`);
-    
+
     const segments: GlossarySegment[] = [];
-    
+
     try {
         for (let segmentIndex = 0; segmentIndex < totalSegments; segmentIndex++) {
             const segmentNumber = segmentIndex + 1;
             const startIdx = segmentIndex * segmentSize;
             const endIdx = Math.min(startIdx + segmentSize, totalChapters);
             const segmentUrls = chapterUrls.slice(startIdx, endIdx);
-            
+
             const segmentChapterStart = chapterRange.start + startIdx;
             const segmentChapterEnd = chapterRange.start + endIdx - 1;
             const segmentRange = { start: segmentChapterStart, end: segmentChapterEnd };
-            
+
             console.log(`📖 Generating segment ${segmentNumber}/${totalSegments}: chapters ${segmentChapterStart}-${segmentChapterEnd}`);
-            
+
             const ai = new GoogleGenAI({ apiKey });
-            
+
             // Generate prompt with previous segments as context
             const systemPrompt = generateSegmentPrompt(seriesName, segmentRange, segmentNumber, segments);
-            
+
             // Prepare the message with segment URLs
-            const urlList = segmentUrls.map((url, index) => 
+            const urlList = segmentUrls.map((url, index) =>
                 `Chapter ${segmentChapterStart + index}: ${url}`
             ).join('\n');
-            
+
             const userMessage = `Please analyze this segment and generate a focused character glossary:\n\n${urlList}`;
-            
+
             const config = {
                 tools: [{ urlContext: {} }],
                 systemInstruction: [{ text: systemPrompt }],
             };
-            
+
             const contents = [{
                 role: 'user',
                 parts: [{ text: userMessage }],
             }];
-            
+
             console.log(`📤 Sending segment ${segmentNumber} request with ${segmentUrls.length} chapter URLs`);
-            
+
             // Add longer delay and retry logic for rate limits
             let retryCount = 0;
             let response: any = null;
             const maxRetries = 3;
-            
+
             while (retryCount <= maxRetries) {
                 try {
                     response = await ai.models.generateContentStream({
@@ -498,12 +509,12 @@ export const generateGlossarySegments = async (
                     throw error; // Re-throw if not rate limit or max retries exceeded
                 }
             }
-            
+
             if (!response) {
                 console.warn(`⚠️ Segment ${segmentNumber} failed after ${maxRetries} retries.`);
                 continue; // Skip this segment
             }
-            
+
             // Extract text from response
             let fullText = '';
             for await (const chunk of response) {
@@ -512,17 +523,17 @@ export const generateGlossarySegments = async (
                     fullText += chunkText;
                 }
             }
-            
+
             console.log(`✅ Segment ${segmentNumber} completed. Response length: ${fullText.length}`);
-            
+
             if (!fullText || fullText.trim().length === 0) {
                 console.warn(`⚠️ Segment ${segmentNumber} returned empty content.`);
                 continue; // Skip this segment but continue with others
             }
-            
+
             // Parse the response for this segment
             const segmentGlossary = parseGlossaryResponse(fullText, seriesName, segmentRange);
-            
+
             if (segmentGlossary) {
                 // Convert to GlossarySegment
                 const segment: GlossarySegment = {
@@ -534,13 +545,13 @@ export const generateGlossarySegments = async (
                     generatedAt: Date.now(),
                     lastModified: Date.now()
                 };
-                
+
                 segments.push(segment);
                 console.log(`📚 Segment ${segmentNumber} processed: ${segment.characters.length} characters`);
             } else {
                 console.warn(`⚠️ Failed to parse segment ${segmentNumber} response.`);
             }
-            
+
             // Add longer delay between segments to respect rate limits
             if (segmentIndex < totalSegments - 1) {
                 const delaySeconds = model.includes('gemini-2.5-pro') ? 35 : 8; // Longer delay for pro model
@@ -548,14 +559,14 @@ export const generateGlossarySegments = async (
                 await new Promise(resolve => setTimeout(resolve, delaySeconds * 1000));
             }
         }
-        
+
         if (segments.length === 0) {
             return {
                 success: false,
                 error: 'No segments were successfully generated'
             };
         }
-        
+
         // Create the collection
         const collection: GlossaryCollection = {
             seriesName,
@@ -565,14 +576,14 @@ export const generateGlossarySegments = async (
             createdAt: Date.now(),
             lastModified: Date.now()
         };
-        
+
         console.log(`🎉 Generated ${segments.length}/${totalSegments} glossary segments successfully!`);
-        
+
         return {
             success: true,
             collection
         };
-        
+
     } catch (error: any) {
         console.error('❌ Segment glossary generation failed:', error);
         return {
@@ -583,190 +594,6 @@ export const generateGlossarySegments = async (
 };
 
 /**
- * Generate character glossary from chapter URLs using batching (legacy method)
- */
-export const generateGlossary = async (
-    options: GlossaryGenerationOptions
-): Promise<GlossaryGenerationResult> => {
-    const { apiKey, model, seriesName, chapterUrls, chapterRange } = options;
-    const batchSize = 10; // Process 10 chapters at a time
-    
-    try {
-        console.log(`🔄 Generating glossary for ${seriesName} chapters ${chapterRange.start}-${chapterRange.end} using batching`);
-        
-        let currentGlossary: Glossary | null = null;
-        const totalBatches = Math.ceil(chapterUrls.length / batchSize);
-        
-        for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
-            const startIdx = batchIndex * batchSize;
-            const endIdx = Math.min(startIdx + batchSize, chapterUrls.length);
-            const batchUrls = chapterUrls.slice(startIdx, endIdx);
-            
-            const batchStart = chapterRange.start + startIdx;
-            const batchEnd = chapterRange.start + endIdx - 1;
-            const batchChapterRange = { start: batchStart, end: batchEnd };
-            
-            console.log(`📦 Processing batch ${batchIndex + 1}/${totalBatches}: chapters ${batchStart}-${batchEnd}`);
-            
-            const ai = new GoogleGenAI({ apiKey });
-            
-            // Choose prompt based on whether we have existing glossary
-            const systemPrompt = currentGlossary 
-                ? generateMergeGlossaryPrompt(seriesName, batchChapterRange, currentGlossary)
-                : generateGlossaryPrompt(seriesName, batchChapterRange);
-            
-            // Prepare the message with batch URLs
-            const urlList = batchUrls.map((url, index) => 
-                `Chapter ${batchStart + index}: ${url}`
-        ).join('\n');
-        
-            const userMessage = currentGlossary
-                ? `Please analyze these new chapters and merge with the existing glossary:\n\n${urlList}`
-                : `Please analyze these chapters and generate a character glossary:\n\n${urlList}`;
-        
-        const config = {
-                tools: [{ urlContext: {} }], // Enable URL context for batch URLs
-            systemInstruction: [{ text: systemPrompt }],
-        };
-        
-        const contents = [{
-            role: 'user',
-            parts: [{ text: userMessage }],
-        }];
-        
-            console.log(`📤 Sending batch ${batchIndex + 1} request with ${batchUrls.length} chapter URLs`);
-        
-        // Make the API call
-        const response = await ai.models.generateContentStream({
-            model: model,
-            config,
-            contents,
-        });
-        
-        // Extract text from response
-        let fullText = '';
-        for await (const chunk of response) {
-            if (chunk.candidates && chunk.candidates[0] && chunk.candidates[0].content && chunk.candidates[0].content.parts) {
-                const chunkText = chunk.candidates[0].content.parts.map((part: any) => part.text).join('');
-                fullText += chunkText;
-            }
-        }
-        
-            console.log(`✅ Batch ${batchIndex + 1} completed. Response length: ${fullText.length}`);
-        
-        if (!fullText || fullText.trim().length === 0) {
-                console.warn(`⚠️ Batch ${batchIndex + 1} returned empty content. This may be due to API limits or processing issues.`);
-                
-                // If we have a previous glossary and this isn't the first batch, use what we have
-                if (currentGlossary && batchIndex > 0) {
-                    console.log(`📚 Using previous glossary from batch ${batchIndex}. Final glossary has ${currentGlossary.characters.length} characters`);
-                    return {
-                        success: true,
-                        glossary: currentGlossary
-                    };
-                } else {
-            return {
-                success: false,
-                        error: `Batch ${batchIndex + 1} returned empty content and no previous glossary available.`,
-                rawResponse: fullText
-                    };
-                }
-            }
-            
-            // Parse the response for this batch
-            const batchGlossary = parseGlossaryResponse(fullText, seriesName, chapterRange);
-            
-            if (!batchGlossary) {
-                console.warn(`⚠️ Failed to parse batch ${batchIndex + 1} response.`);
-                
-                // If we have a previous glossary and this isn't the first batch, use what we have
-                if (currentGlossary && batchIndex > 0) {
-                    console.log(`📚 Parse failed but using previous glossary from batch ${batchIndex}. Final glossary has ${currentGlossary.characters.length} characters`);
-                    return {
-                        success: true,
-                        glossary: currentGlossary
-                    };
-                } else {
-                    return {
-                        success: false,
-                        error: `Failed to parse glossary from batch ${batchIndex + 1} and no previous glossary available.`,
-                        rawResponse: fullText.substring(0, 500) + "..." // Limit error response length
-                    };
-                }
-            }
-            
-            // Update current glossary with batch results and track progress
-            currentGlossary = {
-                ...batchGlossary,
-                lastProcessedChapter: batchEnd // Update to show actual progress
-            };
-            console.log(`📚 Batch ${batchIndex + 1} processed: ${batchGlossary.characters.length} total characters (through chapter ${batchEnd})`);
-            
-            // Add small delay between batches to be nice to the API
-            if (batchIndex < totalBatches - 1) {
-                console.log('⏳ Waiting 2 seconds before next batch...');
-                await new Promise(resolve => setTimeout(resolve, 2000));
-            }
-        }
-        
-        if (currentGlossary) {
-            console.log(`🎉 Glossary generation completed! Final glossary has ${currentGlossary.characters.length} characters`);
-            return {
-                success: true,
-                glossary: currentGlossary
-            };
-        } else {
-            return {
-                success: false,
-                error: 'No glossary was generated from any batch'
-            };
-        }
-        
-    } catch (error: any) {
-        console.error('❌ Batch glossary generation failed:', error);
-        return {
-            success: false,
-            error: error.message || 'Unknown error occurred during batch glossary generation'
-        };
-    }
-};
-
-/**
- * Format glossary for use in translation prompts
- */
-export const formatGlossaryForPrompt = (glossary: Glossary): string => {
-    if (glossary.characters.length === 0) {
-        return '';
-    }
-    
-    const characterList = glossary.characters
-        .sort((a, b) => {
-            // Sort by importance first, then alphabetically
-            const importanceOrder = { major: 0, minor: 1, background: 2 };
-            const importanceDiff = importanceOrder[a.importance] - importanceOrder[b.importance];
-            if (importanceDiff !== 0) return importanceDiff;
-            return a.englishName.localeCompare(b.englishName);
-        })
-        .map(char => {
-            let entry = `• ${char.englishName}`;
-            if (char.japaneseName !== char.englishName) {
-                entry += ` (${char.japaneseName})`;
-            }
-            if (char.age) {
-                entry += ` - Age: ${char.age}`;
-            }
-            if (char.physicalAppearance) {
-                entry += ` - Appearance: ${char.physicalAppearance}`;
-            }
-            entry += ` - ${char.description}`;
-            return entry;
-        })
-        .join('\n');
-    
-    return `\n\n**CHARACTER GLOSSARY:**\nUse these character names and details consistently throughout the translation:\n${characterList}`;
-};
-
-/**
  * Update a character in the glossary
  */
 export const updateCharacterInGlossary = (
@@ -774,16 +601,15 @@ export const updateCharacterInGlossary = (
     characterId: string,
     updates: Partial<Character>
 ): Glossary => {
-    const updatedCharacters = glossary.characters.map(char => 
-        char.id === characterId 
+    const updatedCharacters = glossary.characters.map(char =>
+        char.id === characterId
             ? { ...char, ...updates, lastModified: Date.now() }
             : char
     );
-    
+
     return {
         ...glossary,
         characters: updatedCharacters,
-        lastProcessedChapter: glossary.lastProcessedChapter || glossary.chapterRange.end, // Backwards compatibility
         lastModified: Date.now()
     };
 };
@@ -793,21 +619,18 @@ export const updateCharacterInGlossary = (
  */
 export const addCharacterToGlossary = (
     glossary: Glossary,
-    character: Omit<Character, 'id' | 'lastModified'>
+    newCharacter: Omit<Character, 'id' | 'lastModified'>
 ): Glossary => {
-    const now = Date.now();
-    const newCharacter: Character = {
-        ...character,
-        id: `char-${now}-${Math.random().toString(36).substr(2, 9)}`,
-        occurrenceCount: character.occurrenceCount || 1, // Default to 1 for manually added characters
-        lastModified: now
+    const character: Character = {
+        ...newCharacter,
+        id: `char-${Date.now()}`,
+        lastModified: Date.now()
     };
-    
+
     return {
         ...glossary,
-        characters: [...glossary.characters, newCharacter],
-        lastProcessedChapter: glossary.lastProcessedChapter || glossary.chapterRange.end, // Backwards compatibility
-        lastModified: now
+        characters: [...glossary.characters, character],
+        lastModified: Date.now()
     };
 };
 
@@ -824,4 +647,42 @@ export const removeCharacterFromGlossary = (
         lastProcessedChapter: glossary.lastProcessedChapter || glossary.chapterRange.end, // Backwards compatibility
         lastModified: Date.now()
     };
+};
+
+/**
+ * Delete a specific glossary segment from a collection
+ */
+export const deleteGlossarySegment = (
+    collection: GlossaryCollection,
+    segmentId: string
+): GlossaryCollection => {
+    const updatedSegments = collection.segments.filter(segment => segment.id !== segmentId);
+    
+    return {
+        ...collection,
+        segments: updatedSegments,
+        lastModified: Date.now()
+    };
+};
+
+/**
+ * Format glossary for prompt inclusion
+ */
+export const formatGlossaryForPrompt = (glossary: Glossary): string => {
+    if (!glossary || glossary.characters.length === 0) {
+        return '';
+    }
+
+    const characterEntries = glossary.characters
+        .sort((a, b) => {
+            // Sort by importance first, then alphabetically
+            const importanceOrder = { major: 0, minor: 1, background: 2 };
+            const importanceDiff = importanceOrder[a.importance] - importanceOrder[b.importance];
+            if (importanceDiff !== 0) return importanceDiff;
+            return a.englishName.localeCompare(b.englishName);
+        })
+        .map(char => `${char.japaneseName} (${char.englishName}): ${char.description}`)
+        .join('\n');
+
+    return `Character Reference:\n${characterEntries}`;
 };

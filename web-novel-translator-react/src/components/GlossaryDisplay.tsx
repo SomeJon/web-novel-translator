@@ -13,6 +13,7 @@ export interface GlossaryDisplayProps {
     onUpdateCharacter: (characterId: string, updates: Partial<Character>) => void;
     onAddCharacter: (character: Omit<Character, 'id' | 'lastModified'>) => void;
     onDeleteCharacter: (characterId: string) => void;
+    onDeleteSegment: (segmentId: string) => void;
     onUpdateLastProcessedChapter: (chapter: number) => void;
     isGenerating: boolean;
     glossaryStartChapter: number;
@@ -29,6 +30,7 @@ export const GlossaryDisplay: React.FC<GlossaryDisplayProps> = ({
     onUpdateCharacter,
     onAddCharacter,
     onDeleteCharacter,
+    onDeleteSegment,
     onUpdateLastProcessedChapter,
     isGenerating,
     glossaryStartChapter,
@@ -248,16 +250,38 @@ export const GlossaryDisplay: React.FC<GlossaryDisplayProps> = ({
                     </div>
 
                     {/* Display all segments */}
-                    {displayCollection.segments.map((segment) => (
-                        <div key={segment.id} className="glossary-segment" style={{marginBottom: '2rem', border: '1px solid #e0e0e0', borderRadius: '8px', padding: '1rem'}}>
-                            <div className="segment-header" style={{borderBottom: '1px solid #f0f0f0', paddingBottom: '0.5rem', marginBottom: '1rem'}}>
-                                <h3 style={{margin: 0, color: '#555'}}>
-                                    📖 Segment {segment.segmentNumber}: Chapters {segment.chapterRange.start}-{segment.chapterRange.end}
-                                </h3>
-                                <p style={{margin: '0.25rem 0 0 0', fontSize: '0.9rem', color: '#777'}}>
-                                    {segment.characters.length} characters • Generated {new Date(segment.generatedAt).toLocaleString()}
-                                </p>
-                            </div>
+                            {displayCollection.segments.map((segment) => (
+            <div key={segment.id} className="glossary-segment" style={{marginBottom: '2rem', border: '1px solid #e0e0e0', borderRadius: '8px', padding: '1rem'}}>
+                <div className="segment-header" style={{borderBottom: '1px solid #f0f0f0', paddingBottom: '0.5rem', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem'}}>
+                    <div>
+                        <h3 style={{margin: 0, color: '#555'}}>
+                            📖 Segment {segment.segmentNumber}: Chapters {segment.chapterRange.start}-{segment.chapterRange.end}
+                        </h3>
+                        <p style={{margin: '0.25rem 0 0 0', fontSize: '0.9rem', color: '#777'}}>
+                            {segment.characters.length} characters • Generated {new Date(segment.generatedAt).toLocaleString()}
+                        </p>
+                    </div>
+                    <button
+                        onClick={() => onDeleteSegment(segment.id)}
+                        style={{
+                            background: '#dc3545',
+                            color: 'white',
+                            border: 'none',
+                            padding: '0.5rem 0.75rem',
+                            borderRadius: '4px',
+                            fontSize: '0.8rem',
+                            cursor: 'pointer',
+                            fontWeight: '600',
+                            transition: 'background-color 0.3s ease',
+                            flexShrink: 0
+                        }}
+                        onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#c82333'}
+                        onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#dc3545'}
+                        title={`Delete this segment (${segment.characters.length} characters)`}
+                    >
+                        🗑️ Delete Segment
+                    </button>
+                </div>
 
                             <div className="characters-list">
                                 {segment.characters

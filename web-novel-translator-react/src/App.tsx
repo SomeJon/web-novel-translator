@@ -19,7 +19,8 @@ import {
     generateGlossarySegments,
     updateCharacterInGlossary,
     addCharacterToGlossary,
-    removeCharacterFromGlossary
+    removeCharacterFromGlossary,
+    deleteGlossarySegment
 } from './services/glossaryService';
 import type { Glossary, GlossaryCollection, Character } from './types/glossary';
 
@@ -215,6 +216,22 @@ function App() {
             };
             setGlossary(updatedGlossary);
             setStatus(`Last processed chapter updated to ${chapter}. Next generation will continue from chapter ${chapter + 1}.`);
+        }
+    };
+
+    const handleDeleteSegment = (segmentId: string) => {
+        if (!glossaryCollection) return;
+        
+        const segmentToDelete = glossaryCollection.segments.find(s => s.id === segmentId);
+        if (!segmentToDelete) return;
+        
+        const confirmMessage = `Are you sure you want to delete Segment ${segmentToDelete.segmentNumber} (Chapters ${segmentToDelete.chapterRange.start}-${segmentToDelete.chapterRange.end})?\n\nThis will permanently remove ${segmentToDelete.characters.length} characters from this segment.`;
+        
+        if (window.confirm(confirmMessage)) {
+            const updatedCollection = deleteGlossarySegment(glossaryCollection, segmentId);
+            setGlossaryCollection(updatedCollection);
+            saveStateValue('glossaryCollection', updatedCollection);
+            setStatus(`Deleted segment ${segmentToDelete.segmentNumber} successfully.`);
         }
     };
 
@@ -461,7 +478,25 @@ function App() {
 
         try {
             setStatus('Generating EPUB...');
-            await generateAndDownloadEPUB(translatedChapters, outputFileName);
+            
+            // Create combined glossary for EPUB (from all segments if using segmented glossary)
+            let epubGlossary: Glossary | null = null;
+            if (glossaryCollection && glossaryCollection.segments.length > 0) {
+                // Merge all segment characters into a single glossary for EPUB
+                const allCharacters = glossaryCollection.segments.flatMap(segment => segment.characters);
+                epubGlossary = {
+                    characters: allCharacters,
+                    seriesName: glossaryCollection.seriesName,
+                    chapterRange: glossaryCollection.totalChapterRange,
+                    lastProcessedChapter: glossaryCollection.lastProcessedChapter,
+                    generatedAt: glossaryCollection.createdAt,
+                    lastModified: glossaryCollection.lastModified
+                };
+            } else if (glossary) {
+                epubGlossary = glossary;
+            }
+            
+            await generateAndDownloadEPUB(translatedChapters, outputFileName, epubGlossary);
             setStatus('EPUB downloaded successfully!');
         } catch (error: any) {
             setStatus(`Error generating EPUB: ${error.message}`);
@@ -576,6 +611,7 @@ This action cannot be undone. Are you absolutely sure?`;
                 onUpdateCharacter={handleUpdateCharacter}
                 onAddCharacter={handleAddCharacter}
                 onDeleteCharacter={handleDeleteCharacter}
+                onDeleteSegment={handleDeleteSegment}
                 onUpdateLastProcessedChapter={handleUpdateLastProcessedChapter}
                 isGenerating={isGeneratingGlossary}
                 glossaryStartChapter={glossaryStartChapter}
