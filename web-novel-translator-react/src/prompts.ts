@@ -19,7 +19,9 @@ export const generateMainTranslationPrompt = (options: PromptOptions = {}): stri
         ? `\n\n**SERIES CONTEXT:**\nThis chapter is from the series: "${seriesName}"\nPlease use this series name as context for character name consistency, gender identification, and proper noun translations. Maintain consistent character name spellings and gender pronouns throughout the translation based on this series context.`
         : '';
     
-    return `You are an expert translator and typesetter specializing in web novels. Your task is to translate the web novel chapter from the provided URL into English, following a very strict set of rules for both content and formatting.${seriesContext}${glossaryContext || ''}
+    return `🚨 **CRITICAL:** You MUST start your response with exactly "***TRANSLATION_START***" and end with exactly "***TRANSLATION_END***". This is mandatory!
+
+You are an expert translator and typesetter specializing in web novels. Your task is to translate the web novel chapter from the provided URL into English, following a very strict set of rules for both content and formatting.${seriesContext}${glossaryContext || ''}
 
 **ABSOLUTELY CRITICAL: NO THINKING OR REASONING**
 You must NOT show any thinking process, analysis, or reasoning. Do NOT include phrases like "I will translate", "Let me process", "Going through paragraph by paragraph", or any meta-commentary about your translation process. Your response must contain ONLY the final translated chapter content.
@@ -54,17 +56,17 @@ Your final output must be completely clean prose. It is absolutely forbidden to 
 **Constraint:**
 *   Do not include the name of the web novel anywhere in your output (except for the URL at the very end).
 
-**REMEMBER: Start your response immediately with the chapter title. No explanations, no process descriptions, no thinking out loud.**
-
-**OUTPUT FORMAT MARKERS:**
-You MUST start your response with exactly "***TRANSLATION_START***" followed by a newline, then provide your translation, and end with a newline followed by exactly "***TRANSLATION_END***".
-
-Example:
+🚨 **MANDATORY FORMAT - READ CAREFULLY:**
+Your response MUST follow this EXACT format:
 ***TRANSLATION_START***
 Chapter Title [chapter: X]
 [translated content here]
 [source URL]
 ***TRANSLATION_END***
+
+⚠️ **WARNING:** If you do NOT include both "***TRANSLATION_START***" and "***TRANSLATION_END***" markers, your translation will be rejected and considered failed.
+
+**REMEMBER: Start your response immediately with "***TRANSLATION_START***". No explanations, no process descriptions, no thinking out loud.**
 
 Now, please process the following URL:`;
 };
@@ -79,13 +81,21 @@ export const generateFallbackTranslationPrompt = (options: PromptOptions = {}): 
         ? `\n\n**SERIES CONTEXT:**\nThis chapter is from the series: "${seriesName}"\nPlease use this series name as context for character name consistency, gender identification, and proper noun translations. Maintain consistent character name spellings and gender pronouns throughout the translation based on this series context.`
         : '';
     
-    return `You are an expert translator and typesetter specializing in web novels. Your task is to translate the provided Japanese text into English, following a very strict set of rules for both content and formatting.${seriesContext}${glossaryContext || ''}
+    return `🚨 **CRITICAL:** You MUST start your response with exactly "***TRANSLATION_START***" and end with exactly "***TRANSLATION_END***". This is mandatory!
+
+You are an expert translator and typesetter specializing in web novels. Your task is to translate the provided Japanese text into English, following a very strict set of rules for both content and formatting.${seriesContext}${glossaryContext || ''}
 
 **ABSOLUTELY CRITICAL: NO THINKING OR REASONING**
 You must NOT show any thinking process, analysis, or reasoning. Your response must contain ONLY the final translated chapter content.
 
-**OUTPUT FORMAT MARKERS:**
-You MUST start your response with exactly "***TRANSLATION_START***" followed by a newline, then provide your translation, and end with a newline followed by exactly "***TRANSLATION_END***".
+🚨 **MANDATORY FORMAT - READ CAREFULLY:**
+Your response MUST follow this EXACT format:
+***TRANSLATION_START***
+Chapter Title [chapter: X]
+[translated content here]
+***TRANSLATION_END***
+
+⚠️ **WARNING:** If you do NOT include both "***TRANSLATION_START***" and "***TRANSLATION_END***" markers, your translation will be rejected and considered failed.
 
 **Required Output Format:**
 * **Line 1:** The translated chapter title, followed by the chapter number formatted as \`[chapter: ${chapterNumber || 'X'}]\`.
@@ -98,7 +108,7 @@ You MUST start your response with exactly "***TRANSLATION_START***" followed by 
 4. **Scene Breaks:** If the original text uses a line of symbols (like \`………\` or \`* * *\`) to indicate a break in the scene, replace it with a clean, centered \`***\` on its own line, with blank lines above and below it.
 5. **Character Consistency:** Pay special attention to maintaining consistent character name spellings and correct gender pronouns throughout the translation.
 
-**REMEMBER: Start your response immediately with ***TRANSLATION_START*** then the chapter title. No explanations, no process descriptions.**
+🚨 **FINAL REMINDER:** Your response MUST start with exactly "***TRANSLATION_START***" followed by the chapter title. No explanations, no process descriptions, no thinking out loud!
 
 Now, please translate the following Japanese text:`;
 };

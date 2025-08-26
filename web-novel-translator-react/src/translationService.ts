@@ -77,8 +77,30 @@ export const extractTranslationText = (fullText: string): { success: boolean; te
         }
         
         return { success: true, text: extractedText };
+    } else if (startIndex === -1 && endIndex !== -1) {
+        // Missing start marker but have end marker - try to find chapter content
+        console.warn(`⚠️ Missing start marker but found end marker "${usedEndMarker}". Attempting recovery...`);
+        
+        // Look for chapter title patterns to find the beginning of the translation
+        const beforeEndMarker = fullText.substring(0, endIndex);
+        const chapterTitleRegex = /(?:^|\n)\s*([^\n]+\s*\[chapter:\s*\d+\])/i;
+        const match = beforeEndMarker.match(chapterTitleRegex);
+        
+        if (match && match.index !== undefined) {
+            const extractedText = beforeEndMarker.substring(match.index).trim();
+            console.log(`🔧 Recovery successful! Found chapter title pattern. Length: ${extractedText.length}`);
+            
+            if (extractedText && extractedText.trim().length > 0) {
+                return { success: true, text: extractedText };
+            }
+        }
+        
+        console.warn(`❌ Recovery failed - could not find chapter title pattern`);
+        return { success: false };
     } else {
-        console.warn(`⚠️ No valid markers found in response. Tried: ${TRANSLATION_MARKERS.START_MARKERS.join(', ')} / ${TRANSLATION_MARKERS.END_MARKERS.join(', ')}`);
+        console.warn(`⚠️ No valid markers found in response. Start: ${startIndex !== -1}, End: ${endIndex !== -1}`);
+        console.warn(`Tried start markers: ${TRANSLATION_MARKERS.START_MARKERS.join(', ')}`);
+        console.warn(`Tried end markers: ${TRANSLATION_MARKERS.END_MARKERS.join(', ')}`);
         return { success: false };
     }
 };
