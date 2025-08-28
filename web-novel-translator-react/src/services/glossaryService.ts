@@ -432,22 +432,62 @@ export const generateGlossary = async (options: GlossaryGenerationOptions): Prom
 };
 
 /**
- * Generate glossary segments with progressive context building
+ * Generate glossary segments with progressive context building and incremental support
  */
 export const generateGlossarySegments = async (
-    options: GlossaryGenerationOptions
+    options: GlossaryGenerationOptions,
+    existingCollection?: GlossaryCollection | null
 ): Promise<{ success: boolean; collection?: GlossaryCollection; error?: string }> => {
     const { apiKey, model, seriesName, chapterUrls, chapterRange } = options;
     const segmentSize = 10; // 10 chapters per segment
     const totalChapters = chapterUrls.length;
     const totalSegments = Math.ceil(totalChapters / segmentSize);
 
-    console.log(`🔄 Generating ${totalSegments} glossary segments for ${seriesName} (${segmentSize} chapters each)`);
+    // Start with existing segments if available
+    const existingSegments = existingCollection?.segments || [];
+    const segments: GlossarySegment[] = [...existingSegments];
+    
+    // Calculate which segments we need to generate
+    const existingChapterRanges = existingSegments.map(s => ({ start: s.chapterRange.start, end: s.chapterRange.end }));
+    const segmentsToGenerate: number[] = [];
+    
+    for (let segmentIndex = 0; segmentIndex < totalSegments; segmentIndex++) {
+        const segmentChapterStart = chapterRange.start + (segmentIndex * segmentSize);
+        const segmentChapterEnd = chapterRange.start + Math.min((segmentIndex + 1) * segmentSize, totalChapters) - 1;
+        
+        // Check if this segment overlaps with any existing segment
+        const hasOverlap = existingChapterRanges.some(existing => 
+            (segmentChapterStart <= existing.end && segmentChapterEnd >= existing.start)
+        );
+        
+        if (!hasOverlap) {
+            segmentsToGenerate.push(segmentIndex);
+        }
+    }
 
-    const segments: GlossarySegment[] = [];
+    if (segmentsToGenerate.length === 0) {
+        console.log(`✅ All segments already exist for chapters ${chapterRange.start}-${chapterRange.end}`);
+        const collection: GlossaryCollection = existingCollection || {
+            seriesName,
+            segments: existingSegments,
+            totalChapterRange: chapterRange,
+            createdAt: Date.now(),
+            lastModified: Date.now()
+        };
+        
+        return {
+            success: true,
+            collection
+        };
+    }
+
+    console.log(`🔄 Generating ${segmentsToGenerate.length}/${totalSegments} new glossary segments for ${seriesName} (${segmentSize} chapters each)`);
+    console.log(`📋 Preserving ${existingSegments.length} existing segments`);
+
+    const newSegments: GlossarySegment[] = [];
 
     try {
-        for (let segmentIndex = 0; segmentIndex < totalSegments; segmentIndex++) {
+        for (const segmentIndex of segmentsToGenerate) {
             const segmentNumber = segmentIndex + 1;
             const startIdx = segmentIndex * segmentSize;
             const endIdx = Math.min(startIdx + segmentSize, totalChapters);
@@ -457,12 +497,13 @@ export const generateGlossarySegments = async (
             const segmentChapterEnd = chapterRange.start + endIdx - 1;
             const segmentRange = { start: segmentChapterStart, end: segmentChapterEnd };
 
-            console.log(`📖 Generating segment ${segmentNumber}/${totalSegments}: chapters ${segmentChapterStart}-${segmentChapterEnd}`);
+            console.log(`📖 Generating NEW segment ${segmentNumber}/${totalSegments}: chapters ${segmentChapterStart}-${segmentChapterEnd}`);
 
             const ai = new GoogleGenAI({ apiKey });
 
-            // Generate prompt with previous segments as context
-            const systemPrompt = generateSegmentPrompt(seriesName, segmentRange, segmentNumber, segments);
+            // Generate prompt with ALL existing segments (old + new) as context
+            const allSegmentsForContext = [...segments, ...newSegments];
+            const systemPrompt = generateSegmentPrompt(seriesName, segmentRange, segmentNumber, allSegmentsForContext);
 
             // Prepare the message with segment URLs
             const urlList = segmentUrls.map((url, index) =>
@@ -546,37 +587,58 @@ export const generateGlossarySegments = async (
                     lastModified: Date.now()
                 };
 
-                segments.push(segment);
-                console.log(`📚 Segment ${segmentNumber} processed: ${segment.characters.length} characters`);
+                newSegments.push(segment);
+                console.log(`📚 NEW Segment ${segmentNumber} processed: ${segment.characters.length} characters`);
             } else {
-                console.warn(`⚠️ Failed to parse segment ${segmentNumber} response.`);
+                console.warn(`⚠️ Failed to parse segment ${segmentNumber} response - CONTINUING with existing segments preserved`);
             }
 
             // Add longer delay between segments to respect rate limits
-            if (segmentIndex < totalSegments - 1) {
+            const isLastSegmentToGenerate = segmentIndex === segmentsToGenerate[segmentsToGenerate.length - 1];
+            if (!isLastSegmentToGenerate) {
                 const delaySeconds = model.includes('gemini-2.5-pro') ? 35 : 8; // Longer delay for pro model
                 console.log(`⏳ Waiting ${delaySeconds} seconds before next segment (rate limit protection)...`);
                 await new Promise(resolve => setTimeout(resolve, delaySeconds * 1000));
             }
         }
 
-        if (segments.length === 0) {
+        // Merge existing and new segments
+        const allSegments = [...segments, ...newSegments];
+        
+        // Sort segments by segment number to maintain order
+        allSegments.sort((a, b) => a.segmentNumber - b.segmentNumber);
+
+        if (allSegments.length === 0) {
             return {
                 success: false,
                 error: 'No segments were successfully generated'
             };
         }
 
-        // Create the collection
+        // Update the total chapter range to include both existing and new segments
+        const allChapterRanges = allSegments.map(s => s.chapterRange);
+        const minChapter = Math.min(...allChapterRanges.map(r => r.start));
+        const maxChapter = Math.max(...allChapterRanges.map(r => r.end));
+        
+        const finalChapterRange = {
+            start: Math.min(minChapter, chapterRange.start),
+            end: Math.max(maxChapter, chapterRange.end)
+        };
+
+        // Create or update the collection
         const collection: GlossaryCollection = {
             seriesName,
-            segments,
-            totalChapterRange: chapterRange,
-            createdAt: Date.now(),
+            segments: allSegments,
+            totalChapterRange: finalChapterRange,
+            createdAt: existingCollection?.createdAt || Date.now(),
             lastModified: Date.now()
         };
 
-        console.log(`🎉 Generated ${segments.length}/${totalSegments} glossary segments successfully!`);
+        const statusMsg = newSegments.length > 0 
+            ? `🎉 Generated ${newSegments.length} new segments! Total: ${allSegments.length} segments (${existingSegments.length} existing + ${newSegments.length} new)`
+            : `✅ All segments already existed, collection updated!`;
+        
+        console.log(statusMsg);
 
         return {
             success: true,
@@ -585,6 +647,26 @@ export const generateGlossarySegments = async (
 
     } catch (error: any) {
         console.error('❌ Segment glossary generation failed:', error);
+        
+        // If we have existing segments, preserve them and return partial success
+        if (existingSegments.length > 0) {
+            console.log(`🛡️ Preserving ${existingSegments.length} existing segments despite generation failure`);
+            
+            const preservedCollection: GlossaryCollection = {
+                seriesName,
+                segments: existingSegments,
+                totalChapterRange: existingCollection?.totalChapterRange || chapterRange,
+                createdAt: existingCollection?.createdAt || Date.now(),
+                lastModified: Date.now()
+            };
+            
+            return {
+                success: true, // Partial success - existing segments preserved
+                collection: preservedCollection,
+                error: `Generation failed but preserved ${existingSegments.length} existing segments. Error: ${error.message}`
+            };
+        }
+        
         return {
             success: false,
             error: error.message || 'Unknown error occurred during segment generation'

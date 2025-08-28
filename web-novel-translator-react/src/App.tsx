@@ -145,17 +145,33 @@ function App() {
                 seriesName: seriesName || 'Unknown Series',
                 chapterUrls,
                 chapterRange
-            });
+            }, glossaryCollection); // Pass existing collection for incremental generation
 
             if (result.success && result.collection) {
                 setGlossaryCollection(result.collection);
+                saveStateValue('glossaryCollection', result.collection);
+                
                 const totalCharacters = result.collection.segments.reduce((sum, segment) => sum + segment.characters.length, 0);
                 const majorCount = result.collection.segments.reduce((sum, segment) => 
                     sum + segment.characters.filter(c => c.importance === 'major').length, 0);
                 const minorCount = result.collection.segments.reduce((sum, segment) => 
                     sum + segment.characters.filter(c => c.importance === 'minor').length, 0);
                 
-                setStatus(`✅ Generated ${result.collection.segments.length} progressive glossary segments! Total unique characters: ~${totalCharacters} (${majorCount} major, ${minorCount} minor). Character development tracked across story arcs! 📈`);
+                // Show different messages for incremental vs new generation
+                if (result.error) {
+                    // Partial success - some segments preserved
+                    setStatus(`⚠️ ${result.error} Total segments: ${result.collection.segments.length} (${totalCharacters} characters: ${majorCount} major, ${minorCount} minor)`);
+                } else {
+                    // Full success
+                    const existingCount = glossaryCollection?.segments.length || 0;
+                    const newCount = result.collection.segments.length - existingCount;
+                    
+                    if (newCount > 0) {
+                        setStatus(`✅ Added ${newCount} new segments! Total: ${result.collection.segments.length} segments with ~${totalCharacters} characters (${majorCount} major, ${minorCount} minor). Character development tracked across story arcs! 📈`);
+                    } else {
+                        setStatus(`✅ All segments already existed! Total: ${result.collection.segments.length} segments with ~${totalCharacters} characters (${majorCount} major, ${minorCount} minor) 📚`);
+                    }
+                }
             } else {
                 setStatus(`❌ Failed to generate glossary segments: ${result.error}`);
             }
