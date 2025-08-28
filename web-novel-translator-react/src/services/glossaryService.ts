@@ -261,7 +261,7 @@ export const parseGlossaryResponse = (
             characters,
             seriesName,
             chapterRange,
-            lastProcessedChapter: chapterRange.end, // Track the last chapter we processed
+
             generatedAt: now,
             lastModified: now
         };
@@ -335,7 +335,7 @@ export const parseGlossaryResponse = (
                         characters,
                         seriesName,
                         chapterRange,
-                        lastProcessedChapter: chapterRange.end,
+
                         generatedAt: now,
                         lastModified: now
                     };
@@ -572,7 +572,6 @@ export const generateGlossarySegments = async (
             seriesName,
             segments,
             totalChapterRange: chapterRange,
-            lastProcessedChapter: chapterRange.start + (segments.length * segmentSize) - 1,
             createdAt: Date.now(),
             lastModified: Date.now()
         };
@@ -644,7 +643,7 @@ export const removeCharacterFromGlossary = (
     return {
         ...glossary,
         characters: glossary.characters.filter(char => char.id !== characterId),
-        lastProcessedChapter: glossary.lastProcessedChapter || glossary.chapterRange.end, // Backwards compatibility
+
         lastModified: Date.now()
     };
 };
@@ -658,6 +657,98 @@ export const deleteGlossarySegment = (
 ): GlossaryCollection => {
     const updatedSegments = collection.segments.filter(segment => segment.id !== segmentId);
     
+    return {
+        ...collection,
+        segments: updatedSegments,
+        lastModified: Date.now()
+    };
+};
+
+/**
+ * Update a character in a glossary collection (finds the character in any segment)
+ */
+export const updateCharacterInGlossaryCollection = (
+    collection: GlossaryCollection,
+    characterId: string,
+    updates: Partial<Character>
+): GlossaryCollection => {
+    const updatedSegments = collection.segments.map(segment => {
+        const characterExists = segment.characters.some(char => char.id === characterId);
+        if (characterExists) {
+            const updatedCharacters = segment.characters.map(char =>
+                char.id === characterId
+                    ? { ...char, ...updates, lastModified: Date.now() }
+                    : char
+            );
+            return {
+                ...segment,
+                characters: updatedCharacters,
+                lastModified: Date.now()
+            };
+        }
+        return segment;
+    });
+
+    return {
+        ...collection,
+        segments: updatedSegments,
+        lastModified: Date.now()
+    };
+};
+
+/**
+ * Add a character to the most recent segment of a glossary collection
+ */
+export const addCharacterToGlossaryCollection = (
+    collection: GlossaryCollection,
+    character: Omit<Character, 'id' | 'lastModified'>
+): GlossaryCollection => {
+    if (collection.segments.length === 0) {
+        throw new Error('Cannot add character to collection with no segments');
+    }
+
+    const newCharacter: Character = {
+        ...character,
+        id: `char_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        lastModified: Date.now()
+    };
+
+    // Add to the most recent (last) segment
+    const updatedSegments = [...collection.segments];
+    const lastSegmentIndex = updatedSegments.length - 1;
+    updatedSegments[lastSegmentIndex] = {
+        ...updatedSegments[lastSegmentIndex],
+        characters: [...updatedSegments[lastSegmentIndex].characters, newCharacter],
+        lastModified: Date.now()
+    };
+
+    return {
+        ...collection,
+        segments: updatedSegments,
+        lastModified: Date.now()
+    };
+};
+
+/**
+ * Delete a character from a glossary collection (removes from all segments)
+ */
+export const deleteCharacterFromGlossaryCollection = (
+    collection: GlossaryCollection,
+    characterId: string
+): GlossaryCollection => {
+    const updatedSegments = collection.segments.map(segment => {
+        const updatedCharacters = segment.characters.filter(char => char.id !== characterId);
+        if (updatedCharacters.length !== segment.characters.length) {
+            // Character was found and removed from this segment
+            return {
+                ...segment,
+                characters: updatedCharacters,
+                lastModified: Date.now()
+            };
+        }
+        return segment;
+    });
+
     return {
         ...collection,
         segments: updatedSegments,

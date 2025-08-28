@@ -14,7 +14,6 @@ export interface GlossaryDisplayProps {
     onAddCharacter: (character: Omit<Character, 'id' | 'lastModified'>) => void;
     onDeleteCharacter: (characterId: string) => void;
     onDeleteSegment: (segmentId: string) => void;
-    onUpdateLastProcessedChapter: (chapter: number) => void;
     isGenerating: boolean;
     glossaryStartChapter: number;
     glossaryNumChapters: number;
@@ -31,7 +30,6 @@ export const GlossaryDisplay: React.FC<GlossaryDisplayProps> = ({
     onAddCharacter,
     onDeleteCharacter,
     onDeleteSegment,
-    onUpdateLastProcessedChapter,
     isGenerating,
     glossaryStartChapter,
     glossaryNumChapters,
@@ -234,19 +232,6 @@ export const GlossaryDisplay: React.FC<GlossaryDisplayProps> = ({
                         <p><strong>Total Range:</strong> {displayCollection.totalChapterRange.start}-{displayCollection.totalChapterRange.end}</p>
                         <p><strong>Segments:</strong> {displayCollection.segments.length} (10 chapters each)</p>
                         <p><strong>Created:</strong> {new Date(displayCollection.createdAt).toLocaleString()}</p>
-                        <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0.5rem 0'}}>
-                            <strong>Last Processed Chapter:</strong>
-                            <input
-                                type="number"
-                                min="1"
-                                value={displayCollection.lastProcessedChapter}
-                                onChange={(e) => onUpdateLastProcessedChapter(parseInt(e.target.value) || displayCollection.lastProcessedChapter)}
-                                style={{width: '80px', padding: '0.25rem', border: '1px solid #ddd', borderRadius: '4px'}}
-                            />
-                            <span style={{fontSize: '0.85rem', color: '#666'}}>
-                                (Continue from chapter {displayCollection.lastProcessedChapter + 1})
-                            </span>
-                        </div>
                     </div>
 
                     {/* Display all segments */}
@@ -435,19 +420,6 @@ export const GlossaryDisplay: React.FC<GlossaryDisplayProps> = ({
                         <p><strong>Chapter Range:</strong> {displayGlossary.chapterRange.start}-{displayGlossary.chapterRange.end}</p>
                         <p><strong>Characters:</strong> {displayGlossary.characters.length}</p>
                         <p><strong>Generated:</strong> {new Date(displayGlossary.generatedAt).toLocaleString()}</p>
-                        <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0.5rem 0'}}>
-                            <strong>Last Processed Chapter:</strong>
-                            <input
-                                type="number"
-                                min="1"
-                                value={displayGlossary.lastProcessedChapter}
-                                onChange={(e) => onUpdateLastProcessedChapter(parseInt(e.target.value) || displayGlossary.lastProcessedChapter)}
-                                style={{width: '80px', padding: '0.25rem', border: '1px solid #ddd', borderRadius: '4px'}}
-                            />
-                            <span style={{fontSize: '0.85rem', color: '#666'}}>
-                                (Continue from chapter {displayGlossary.lastProcessedChapter + 1})
-                            </span>
-                        </div>
                     </div>
 
                     <div className="characters-section">

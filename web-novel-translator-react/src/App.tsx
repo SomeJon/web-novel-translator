@@ -16,11 +16,14 @@ import {
 } from './translationService';
 import { generateAndDownloadEPUB } from './epubService';
 import { 
-    generateGlossarySegments,
-    updateCharacterInGlossary,
-    addCharacterToGlossary,
+    generateGlossarySegments, 
+    updateCharacterInGlossary, 
+    addCharacterToGlossary, 
     removeCharacterFromGlossary,
-    deleteGlossarySegment
+    deleteGlossarySegment,
+    updateCharacterInGlossaryCollection,
+    addCharacterToGlossaryCollection,
+    deleteCharacterFromGlossaryCollection
 } from './services/glossaryService';
 import type { Glossary, GlossaryCollection, Character } from './types/glossary';
 
@@ -174,50 +177,55 @@ function App() {
     };
 
     const handleUpdateCharacter = (characterId: string, updates: Partial<Character>) => {
-        if (glossary) {
+        if (glossaryCollection) {
+            // Update character in segmented glossary
+            const updatedCollection = updateCharacterInGlossaryCollection(glossaryCollection, characterId, updates);
+            setGlossaryCollection(updatedCollection);
+            saveStateValue('glossaryCollection', updatedCollection);
+            setStatus(`✅ Character updated successfully in segmented glossary.`);
+        } else if (glossary) {
+            // Update character in legacy glossary
             const updatedGlossary = updateCharacterInGlossary(glossary, characterId, updates);
             setGlossary(updatedGlossary);
-            setStatus(`Character updated successfully.`);
+            saveStateValue('glossary', updatedGlossary);
+            setStatus(`✅ Character updated successfully.`);
         }
     };
 
     const handleAddCharacter = (character: Omit<Character, 'id' | 'lastModified'>) => {
-        if (glossary) {
+        if (glossaryCollection) {
+            // Add character to the most recent segment of the collection
+            const updatedCollection = addCharacterToGlossaryCollection(glossaryCollection, character);
+            setGlossaryCollection(updatedCollection);
+            saveStateValue('glossaryCollection', updatedCollection);
+            setStatus(`✅ Character "${character.englishName}" added to segmented glossary.`);
+        } else if (glossary) {
+            // Add character to legacy glossary
             const updatedGlossary = addCharacterToGlossary(glossary, character);
             setGlossary(updatedGlossary);
-            setStatus(`New character "${character.englishName}" added to glossary.`);
+            saveStateValue('glossary', updatedGlossary);
+            setStatus(`✅ Character "${character.englishName}" added to glossary.`);
         }
     };
 
     const handleDeleteCharacter = (characterId: string) => {
-        if (glossary) {
+        if (glossaryCollection) {
+            // Delete character from segmented glossary
+            const updatedCollection = deleteCharacterFromGlossaryCollection(glossaryCollection, characterId);
+            setGlossaryCollection(updatedCollection);
+            saveStateValue('glossaryCollection', updatedCollection);
+            setStatus(`✅ Character deleted from segmented glossary.`);
+        } else if (glossary) {
+            // Delete character from legacy glossary
             const character = glossary.characters.find(c => c.id === characterId);
             const updatedGlossary = removeCharacterFromGlossary(glossary, characterId);
             setGlossary(updatedGlossary);
-            setStatus(`Character "${character?.englishName || 'Unknown'}" removed from glossary.`);
+            saveStateValue('glossary', updatedGlossary);
+            setStatus(`✅ Character "${character?.englishName || 'Unknown'}" deleted from glossary.`);
         }
     };
 
-    const handleUpdateLastProcessedChapter = (chapter: number) => {
-        if (glossaryCollection) {
-            const updatedCollection = {
-                ...glossaryCollection,
-                lastProcessedChapter: chapter,
-                lastModified: Date.now()
-            };
-            setGlossaryCollection(updatedCollection);
-            setStatus(`Last processed chapter updated to ${chapter}. Next generation will continue from chapter ${chapter + 1}.`);
-        } else if (glossary) {
-            // Legacy support
-            const updatedGlossary = {
-                ...glossary,
-                lastProcessedChapter: chapter,
-                lastModified: Date.now()
-            };
-            setGlossary(updatedGlossary);
-            setStatus(`Last processed chapter updated to ${chapter}. Next generation will continue from chapter ${chapter + 1}.`);
-        }
-    };
+
 
     const handleDeleteSegment = (segmentId: string) => {
         if (!glossaryCollection) return;
@@ -267,7 +275,7 @@ function App() {
                 characters: allCharacters,
                 seriesName: glossaryCollection.seriesName,
                 chapterRange: glossaryCollection.totalChapterRange,
-                lastProcessedChapter: glossaryCollection.lastProcessedChapter,
+
                 generatedAt: glossaryCollection.createdAt,
                 lastModified: glossaryCollection.lastModified
             };
@@ -488,7 +496,7 @@ function App() {
                     characters: allCharacters,
                     seriesName: glossaryCollection.seriesName,
                     chapterRange: glossaryCollection.totalChapterRange,
-                    lastProcessedChapter: glossaryCollection.lastProcessedChapter,
+    
                     generatedAt: glossaryCollection.createdAt,
                     lastModified: glossaryCollection.lastModified
                 };
@@ -612,7 +620,6 @@ This action cannot be undone. Are you absolutely sure?`;
                 onAddCharacter={handleAddCharacter}
                 onDeleteCharacter={handleDeleteCharacter}
                 onDeleteSegment={handleDeleteSegment}
-                onUpdateLastProcessedChapter={handleUpdateLastProcessedChapter}
                 isGenerating={isGeneratingGlossary}
                 glossaryStartChapter={glossaryStartChapter}
                 glossaryNumChapters={glossaryNumChapters}

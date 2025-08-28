@@ -37,7 +37,6 @@ export interface GlossaryCollection {
         start: number;
         end: number;
     };
-    lastProcessedChapter: number; // Last chapter that was processed during generation
     createdAt: number;
     lastModified: number;
 }
@@ -50,7 +49,6 @@ export interface Glossary {
         start: number;
         end: number;
     };
-    lastProcessedChapter: number; // Last chapter that was processed during generation
     generatedAt: number; // Timestamp when glossary was generated
     lastModified: number; // Timestamp when glossary was last edited
 }
